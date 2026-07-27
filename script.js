@@ -306,8 +306,47 @@ async function loadMenuPage() {
 document.addEventListener("DOMContentLoaded", () => {
     loadWeeklyMenuTitles();
     loadMenuPage();
+    loadHomeTicker();
     checkUserPreference();
 });
 
 
 
+async function loadHomeTicker() {
+    const ticker = document.getElementById("food-ticker-items");
+
+    if (!ticker) return;
+
+    try {
+        const { data: menus, error } = await db
+            .from("weekly_menus")
+            .select("*")
+            .eq("is_approved", true)
+            .order("week_start_date", { ascending: false });
+
+        if (error) throw error;
+
+        if (!menus || menus.length === 0) {
+            ticker.innerHTML = "<span>No menu available</span>";
+            return;
+        }
+
+        const latestWeek = menus[0].week_start_date;
+
+        const currentMenus = menus.filter(
+            menu => menu.week_start_date === latestWeek
+        );
+
+        ticker.innerHTML =
+            currentMenus
+                .map(menu => `<span>${menu.restaurant_name}</span>`)
+                .join("") +
+            currentMenus
+                .map(menu => `<span>${menu.restaurant_name}</span>`)
+                .join("");
+
+    } catch (err) {
+        console.error("Ticker load error:", err);
+        ticker.innerHTML = "<span>Unable to load weekly menu</span>";
+    }
+}
