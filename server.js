@@ -1,324 +1,246 @@
-<!DOCTYPE html>
-<html lang="en">
+// ==========================================
+// DEPENDENCIES & INITIALIZATION
+// ==========================================
+const express = require("express");
+const sqlite3 = require("sqlite3").verbose();
+const path = require("path");
+const cookieParser = require("cookie-parser");
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+const { createClient } = require("@supabase/supabase-js");
 
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Commvault Lunch Portal | Order</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css">
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-</head>
+const app = express();
+const PORT = process.env.PORT || 3000;
+const JWT_SECRET = process.env.JWT_SECRET || "commvault-portal-secret-key-2026";
 
-<body>
-    <script>
-        async function ensureAuth() {
-            const storedUsername = localStorage.getItem("username");
-            const storedRole = localStorage.getItem("userRole");
+// ==========================================
+// SUPABASE CLIENT INITIALIZATION
+// ==========================================
+const supabaseUrl = 'https://udqraywfsemkulraudbd.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVkcXJheXdmc2Vta3VscmF1ZGJkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQxMzI2NjEsImV4cCI6MjA5OTcwODY2MX0.2VWPvdoJP-bYalmBa56wqqEWX8jPABNgFokYomQo2Rk';
+const supabase = createClient(supabaseUrl, supabaseKey);
 
-            try {
-                const response = await fetch("/api/auth/me");
-                if (!response.ok) {
-                    throw new Error("Not authenticated");
-                }
+// ==========================================
+// MIDDLEWARE CONFIGURATION
+// ==========================================
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
+app.use(express.static(path.join(__dirname, "public")));
 
-                const data = await response.json();
-                localStorage.setItem("username", data.username);
-                localStorage.setItem("userRole", data.role);
-            } catch (error) {
-                if (storedUsername && storedRole) {
-                    return;
-                }
+// ==========================================
+// DATABASE SETUP (SQLITE)
+// ==========================================
+const db = new sqlite3.Database("./database.db", (err) => {
+    if (err) {
+        console.error("Error connecting to SQLite database:", err.message);
+    } else {
+        console.log("Connected to SQLite database.");
+        initializeDatabase();
+    }
+});
+
+function initializeDatabase() {
+    db.serialize(() => {
+        // Users Table
+        db.run(`
+            CREATE TABLE IF NOT EXISTS users (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                username TEXT UNIQUE NOT NULL,
+                password TEXT NOT NULL,
+                role TEXT NOT NULL DEFAULT 'user',
+                createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
+        // Subscribers Table (Text Alerts)
+        db.run(`
+            CREATE TABLE IF NOT EXISTS subscribers (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                phone TEXT UNIQUE NOT NULL,
+                subscribedAt DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+
+        // Seed default admin and user if users table is empty
+        db.get(`SELECT COUNT(*) AS count FROM users`, [], async (err, row) => {
+            if (!err && row.count === 0) {
+                const adminPassword = await bcrypt.hash("admin123", 10);
+                const userPassword = await bcrypt.hash("user123", 10);
+
+                db.run(`INSERT INTO users (username, password, role) VALUES (?, ?, ?)`, ["admin", adminPassword, "admin"]);
+                db.run(`INSERT INTO users (username, password, role) VALUES (?, ?, ?)`, ["employee", userPassword, "user"]);
+                console.log("Default accounts initialized: admin / admin123, employee / user123");
             }
-        }
-
-        ensureAuth();
-    </script>
-
-    <nav class="navbar navbar-expand-lg custom-navbar py-3">
-        <div class="container">
-            <a class="navbar-brand" href="home.html">
-                <img src="images/images/commvault-logo.png" alt="Commvault Logo" class="navbar-logo">
-            </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="text-dark fw-bold fs-4">☰</span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <div class="navbar-nav ms-auto">
-                    <a class="nav-link text-white-50" href="home.html">Home</a>
-                    <a class="nav-link text-white-50" href="menu.html">Menu</a>
-                    <a class="nav-link active-link" href="order.html">Order</a>
-                    <a class="nav-link text-white-50" href="contact.html">Contact</a>
-                   
-                    <a id="adminLink" class="nav-link text-white-50" href="admin-new.html" style="display: none;">Admin</a>
-                   
-                    <button onclick="logout()" class="btn btn-outline-light">Logout</button>
-                </div>
-            </div>
-        </div>
-    </nav>
-
-    <section class="survey-hero">
-        <div class="hero-overlay">
-            <div class="container text-center">
-                <span class="hero-pill">LUNCH ORDER</span>
-                <p class="lead mt-3">Submit your lunch preferences for the upcoming week.</p>
-            </div>
-        </div>
-    </section>
-
-    <section class="survey-section py-5">
-        <div class="container">
-            <div class="survey-card-wrapper bg-white p-5">
-                <h2 id="orderWeekHeader" class="fw-bold mb-2">Food Order</h2>
-                <p class="text-secondary mb-3">Please pick Veg/Non-Veg/Half+Half/Decline so that we can get the exact count</p>
-                <p class="text-muted small mb-4">Hi, <span id="userGreeting">there</span>. When you submit this form, the owner will see your name and email address.</p>
-
-                <div id="orderStatus" class="alert d-none" role="status"></div>
-
-                <form id="lunchSurveyForm">
-                    <div class="survey-question">
-                        <h5 class="fw-bold">
-                            1. <span id="mondayTitle">Monday: Loading menu...</span>
-                        </h5>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="monday" value="veg" id="mondayVeg">
-                            <label class="form-check-label" for="mondayVeg">Veg</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="monday" value="nonveg" id="mondayNonveg">
-                            <label class="form-check-label" for="mondayNonveg">Non-veg</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="monday" value="halfhalf" id="mondayHalfHalf">
-                            <label class="form-check-label" for="mondayHalfHalf">1/2 serving veg <strong>AND</strong> 1/2 serving non-veg</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="monday" value="skip" id="mondaySkip">
-                            <label class="form-check-label" for="mondaySkip">I will decline this</label>
-                        </div>
-                    </div>
-
-                    <div class="survey-question">
-                        <h5 class="fw-bold">
-                            2. <span id="tuesdayTitle">Tuesday: Loading menu...</span>
-                        </h5>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="tuesday" value="veg" id="tuesdayVeg">
-                            <label class="form-check-label" for="tuesdayVeg">Veg</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="tuesday" value="nonveg" id="tuesdayNonveg">
-                            <label class="form-check-label" for="tuesdayNonveg">Non-veg</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="tuesday" value="halfhalf" id="tuesdayHalfHalf">
-                            <label class="form-check-label" for="tuesdayHalfHalf">1/2 serving veg <strong>AND</strong> 1/2 serving non-veg</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="tuesday" value="skip" id="tuesdaySkip">
-                            <label class="form-check-label" for="tuesdaySkip">I will decline this</label>
-                        </div>
-                    </div>
-
-                    <div class="survey-question">
-                        <h5 class="fw-bold">
-                            3. <span id="wednesdayTitle">Wednesday: Loading menu...</span>
-                        </h5>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="wednesday" value="veg" id="wednesdayVeg">
-                            <label class="form-check-label" for="wednesdayVeg">Veg</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="wednesday" value="cheese" id="wednesdayCheese">
-                            <label class="form-check-label" for="wednesdayCheese">Cheese</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="wednesday" value="chicken" id="wednesdayChicken">
-                            <label class="form-check-label" for="wednesdayChicken">Chicken</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="wednesday" value="meatlovers" id="wednesdayMeatLovers">
-                            <label class="form-check-label" for="wednesdayMeatLovers">Meat Lovers</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="wednesday" value="skip" id="wednesdaySkip">
-                            <label class="form-check-label" for="wednesdaySkip">I will skip this</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="wednesday" value="salad" id="wednesdaySalad">
-                            <label class="form-check-label" for="wednesdaySalad">I want salad ONLY</label>
-                        </div>
-                    </div>
-
-                    <div class="survey-question">
-                        <h5 class="fw-bold">
-                            4. <span id="thursdayTitle">Thursday: Loading menu...</span>
-                        </h5>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="thursday" value="halfhalf" id="thursdayHalfHalf">
-                            <label class="form-check-label" for="thursdayHalfHalf">1/2 serving veg <strong>AND</strong> 1/2 serving non-veg</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="thursday" value="veg" id="thursdayVeg">
-                            <label class="form-check-label" for="thursdayVeg">1 serving veg</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="thursday" value="nonveg" id="thursdayNonveg">
-                            <label class="form-check-label" for="thursdayNonveg">1 serving non-veg</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="thursday" value="skip" id="thursdaySkip">
-                            <label class="form-check-label" for="thursdaySkip">I will skip this</label>
-                        </div>
-                    </div>
-
-                    <div class="survey-question">
-                        <h5 class="fw-bold">
-                            5. <span id="bagelsTitle">Friday 9 AM: Bagels for breakfast</span>
-                        </h5>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="bagels" value="yes" id="bagelsYes">
-                            <label class="form-check-label" for="bagelsYes">Yes, count me in</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="bagels" value="no" id="bagelsNo">
-                            <label class="form-check-label" for="bagelsNo">No, I will skip this</label>
-                        </div>
-                    </div>
-
-                    <div class="survey-question">
-                        <h5 class="fw-bold">
-                            6. <span id="fridayTitle">Friday Lunch: Loading menu...</span>
-                        </h5>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="bubbakoos" value="halfhalf" id="bubbakoosHalfHalf">
-                            <label class="form-check-label" for="bubbakoosHalfHalf">1/2 serving veg <strong>AND</strong> 1/2 serving non-veg</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="bubbakoos" value="veg" id="bubbakoosVeg">
-                            <label class="form-check-label" for="bubbakoosVeg">1 serving veg</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="bubbakoos" value="nonveg" id="bubbakoosNonveg">
-                            <label class="form-check-label" for="bubbakoosNonveg">1 serving non-veg</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="bubbakoos" value="skip" id="bubbakoosSkip">
-                            <label class="form-check-label" for="bubbakoosSkip">I will skip this</label>
-                        </div>
-                    </div>
-
-                    <div class="survey-question">
-                        <h5 class="fw-bold">
-                            7. <span id="icecreamTitle">Friday 3:30 PM: Ice Cream</span>
-                        </h5>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="icecream" value="yes" id="icecreamYes">
-                            <label class="form-check-label" for="icecreamYes">Yes, count me in</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="radio" name="icecream" value="no" id="icecreamNo">
-                            <label class="form-check-label" for="icecreamNo">No, I will skip this</label>
-                        </div>
-                    </div>
-
-                    <div class="text-center mt-4">
-                        <button type="submit" id="orderSubmitBtn" class="btn btn-primary-action px-5 py-3">
-                            Submit Order
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </section>
-
-    <div class="modal fade" id="surveySuccessModal" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content border-0 shadow">
-                <div class="modal-header custom-modal-header text-white">
-                    <h5 class="modal-title">Lunch Order Submitted</h5>
-                </div>
-                <div class="modal-body">
-                    <div id="orderSummaryContent"></div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn custom-modal-btn" data-bs-dismiss="modal">Close</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="modal fade" id="preferenceModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1">
-        <div class="modal-dialog modal-dialog-centered">
-            <div class="modal-content text-center border-0 p-4">
-                <div class="modal-body">
-                    <h3 class="fw-bold mb-3">Welcome to the Lunch Portal</h3>
-                    <p class="text-secondary mb-4">What are your preferences?</p>
-                    <div class="d-grid gap-2">
-                        <input type="radio" class="btn-check" name="dietPreference" id="prefVeg" value="Vegetarian">
-                        <label class="btn btn-outline-custom" for="prefVeg">Vegetarian</label>
-                        <input type="radio" class="btn-check" name="dietPreference" id="prefNonVeg" value="Non-Vegetarian">
-                        <label class="btn btn-outline-custom" for="prefNonVeg">Non-Vegetarian</label>
-                        <input type="radio" class="btn-check" name="dietPreference" id="prefBoth" value="Both" checked>
-                        <label class="btn btn-outline-custom" for="prefBoth">Both</label>
-                    </div>
-                    <button id="submitPreferenceBtn" class="btn btn-primary-action mt-4 px-4">Continue</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <footer class="custom-footer py-5 text-white">
-        <div class="container">
-            <div class="row">
-                <div class="col-md-6">
-                    <h5 class="fw-bold">Commvault Lunch Portal</h5>
-                    <p class="text-white-50">Weekly lunch selections for employees.</p>
-                </div>
-                <div class="col-md-6 text-md-end">
-                    <h6 class="fw-bold mb-3">Quick Links</h6>
-                    <a href="home.html" class="text-white-50 text-decoration-none d-block">Home</a>
-                    <a href="menu.html" class="text-white-50 text-decoration-none d-block">Menu</a>
-                    <a href="order.html" class="text-white-50 text-decoration-none d-block">Order</a>
-                    <a href="contact.html" class="text-white-50 text-decoration-none d-block">Contact</a>
-                </div>
-            </div>
-        </div>
-        <hr class="border-light opacity-25 my-4">
-        <div class="text-center text-white-50 small">
-            © 2026 Commvault Lunch Portal. All rights reserved.
-        </div>
-    </footer>
-
-    <script>
-        async function logout() {
-            try {
-                await fetch("/logout", { method: "POST" });
-            } catch (error) {
-                console.error("Logout error:", error);
-            }
-
-            localStorage.removeItem("userRole");
-            localStorage.removeItem("username");
-            localStorage.removeItem("dietPreference");
-            window.location.href = "login.html";
-        }
-
-        window.addEventListener("load", () => {
-            const userRole = localStorage.getItem("userRole");
-            const username = localStorage.getItem("username");
-            if (userRole === "admin") {
-                const adminLink = document.getElementById("adminLink");
-                if (adminLink) adminLink.style.display = "block";
-            }
-            const userGreeting = document.getElementById("userGreeting");
-            if (userGreeting) userGreeting.textContent = username || "there";
         });
-    </script>
+    });
+}
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    <script src="script.js"></script>
-</body>
+// ==========================================
+// AUTHENTICATION MIDDLEWARE
+// ==========================================
+function authenticateToken(req, res, next) {
+    const token = req.cookies.auth_token;
+    if (!token) {
+        return res.status(401).json({ error: "Unauthorized access. Please log in." });
+    }
 
-</html>
+    jwt.verify(token, JWT_SECRET, (err, decodedUser) => {
+        if (err) {
+            return res.status(403).json({ error: "Invalid or expired session token." });
+        }
+        req.user = decodedUser;
+        next();
+    });
+}
+
+function requireAdmin(req, res, next) {
+    authenticateToken(req, res, () => {
+        if (req.user && req.user.role === "admin") {
+            next();
+        } else {
+            res.status(403).json({ error: "Forbidden: Admin privileges required." });
+        }
+    });
+}
+
+// ==========================================
+// 1. AUTHENTICATION ENDPOINTS
+// ==========================================
+
+// Login
+app.post("/api/login", (req, res) => {
+    const { username, password } = req.body;
+
+    if (!username || !password) {
+        return res.status(400).json({ error: "Username and password are required." });
+    }
+
+    db.get(`SELECT * FROM users WHERE username = ?`, [username.trim()], async (err, user) => {
+        if (err) return res.status(500).json({ error: "Database authentication error." });
+        if (!user) return res.status(401).json({ error: "Invalid username or password." });
+
+        const validPassword = await bcrypt.compare(password, user.password);
+        if (!validPassword) {
+            return res.status(401).json({ error: "Invalid username or password." });
+        }
+
+        const token = jwt.sign(
+            { id: user.id, username: user.username, role: user.role },
+            JWT_SECRET,
+            { expiresIn: "8h" }
+        );
+
+        res.cookie("auth_token", token, {
+            httpOnly: true,
+            sameSite: "strict",
+            maxAge: 8 * 60 * 60 * 1000 // 8 hours
+        });
+
+        res.json({ message: "Login successful", username: user.username, role: user.role });
+    });
+});
+
+// Check Current User Authentication Status
+app.get("/api/auth/me", authenticateToken, (req, res) => {
+    res.json({ username: req.user.username, role: req.user.role });
+});
+
+// Logout Endpoint
+app.post("/logout", (req, res) => {
+    res.clearCookie("auth_token");
+    res.json({ message: "Logged out successfully" });
+});
+
+// ==========================================
+// 2. ADMIN USER ENDPOINTS
+// ==========================================
+
+// Get all registered users (Admin only)
+app.get("/api/admin/users", requireAdmin, (req, res) => {
+    db.all(`SELECT id, username, role, createdAt FROM users ORDER BY username ASC`, [], (err, rows) => {
+        if (err) return res.status(500).json({ error: "Could not fetch users list." });
+        res.json(rows);
+    });
+});
+
+// Get subscribers list (Admin only)
+app.get("/api/admin/subscribers", requireAdmin, (req, res) => {
+    db.all(`SELECT * FROM subscribers ORDER BY subscribedAt DESC`, [], (err, rows) => {
+        if (err) return res.status(500).json({ error: "Could not fetch subscribers." });
+        res.json(rows);
+    });
+});
+
+// ==========================================
+// 3. SUBSCRIBER ENDPOINT (TEXT ALERTS)
+// ==========================================
+app.post("/api/subscribe", (req, res) => {
+    const { phone } = req.body;
+    if (!phone || phone.trim().length < 10) {
+        return res.status(400).json({ error: "Please enter a valid phone number." });
+    }
+
+    db.run(`INSERT INTO subscribers (phone) VALUES (?)`, [phone.trim()], function (err) {
+        if (err) {
+            if (err.message.includes("UNIQUE")) {
+                return res.status(400).json({ error: "Phone number is already subscribed." });
+            }
+            return res.status(500).json({ error: "Failed to enroll subscription." });
+        }
+        res.status(201).json({ message: "Successfully signed up for text alerts!" });
+    });
+});
+
+// ==========================================
+// 4. CONTACT FORM ENDPOINT (SUPABASE INTEGRATION)
+// ==========================================
+app.post("/api/contact", async (req, res) => {
+    const { name, email, message } = req.body;
+
+    if (!name || !email || !message) {
+        return res.status(400).json({ error: "All fields are required." });
+    }
+
+    if (name.trim().length < 2) {
+        return res.status(400).json({ error: "Name must be at least 2 characters." });
+    }
+
+    const emailRegex = /^[^^\s@]+@[^^\s@]+\.[^^\s@]+$/;
+    if (!emailRegex.test(email)) {
+        return res.status(400).json({ error: "Please provide a valid email address." });
+    }
+
+    if (message.trim().length < 5) {
+        return res.status(400).json({ error: "Message must be at least 5 characters long." });
+    }
+
+    try {
+        const { data, error } = await supabase
+            .from("contact_messages")
+            .insert([
+                {
+                    name: name.trim(),
+                    email: email.trim(),
+                    message: message.trim(),
+                    status: "Pending"
+                }
+            ]);
+
+        if (error) {
+            throw error;
+        }
+
+        res.status(201).json({ message: "Contact message received successfully!" });
+    } catch (err) {
+        console.error("Supabase Contact Insert Error:", err);
+        res.status(500).json({ error: "Failed to submit contact form to database." });
+    }
+});
+
+// ==========================================
+// START SERVER
+// ==========================================
+app.listen(PORT, () => {
+    console.log(`Commvault Lunch Portal server running on port ${PORT}`);
+});
