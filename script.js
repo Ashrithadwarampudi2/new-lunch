@@ -1,3 +1,5 @@
+
+
 // ==========================================
 // SUPABASE CLIENT INITIALIZATION
 // ==========================================
@@ -53,11 +55,32 @@ console.log("Menu page loaded");
 
             currentWeekMenus.forEach(menu => {
                 const dayKey = menu.day_of_week;
-                if (daysMap[dayKey] && menu.restaurant_name) {
-                    const el = document.getElementById(daysMap[dayKey]);
-                    if (el) {
-                        el.textContent = `${dayKey}: ${menu.restaurant_name}`;
-                    }
+                console.log(menu.day_of_week, menu.meal_type, menu.restaurant_name);
+
+if (dayKey === "Friday") {
+
+    if (menu.meal_type === "Breakfast") {
+        const bagelsEl = document.getElementById("bagelsTitle");
+        if (bagelsEl) {
+            bagelsEl.textContent = `Friday Breakfast: ${menu.restaurant_name}`;
+        }
+    }
+
+    if (menu.meal_type === "Lunch") {
+        const fridayEl = document.getElementById("fridayTitle");
+        if (fridayEl) {
+            fridayEl.textContent = `Friday Lunch: ${menu.restaurant_name}`;
+        }
+    }
+
+} else if (daysMap[dayKey] && menu.restaurant_name) {
+
+    const el = document.getElementById(daysMap[dayKey]);
+
+    if (el) {
+        el.textContent = `${dayKey}: ${menu.restaurant_name}`;
+    }
+}
 
 
                     // Update corresponding radio label options dynamically if available
@@ -65,7 +88,6 @@ console.log("Menu page loaded");
                     if (optionLabel) {
                         optionLabel.textContent = `${menu.restaurant_name} Option`;
                     }
-                }
             });
         }
     } catch (err) {

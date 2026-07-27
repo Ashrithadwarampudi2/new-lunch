@@ -26,7 +26,7 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
-app.use(express.static(path.join(__dirname, "public")));
+app.use(express.static(__dirname));
 
 // ==========================================
 // DATABASE SETUP (SQLITE)
@@ -241,6 +241,9 @@ app.post("/api/contact", async (req, res) => {
 // ==========================================
 // START SERVER
 // ==========================================
+app.get("/", (req, res) => {
+    res.sendFile(path.join(__dirname, "login.html"));
+});
 app.listen(PORT, () => {
     console.log(`Commvault Lunch Portal server running on port ${PORT}`);
 });
