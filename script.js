@@ -30,6 +30,9 @@ async function loadWeeklyMenuTitles() {
             .order("id", { ascending: false });
 
 
+            console.log("Menus:", menus);
+console.log("Error:", error);
+console.log("Menu page loaded");
         if (error) throw error;
 
 
