@@ -5,10 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Commvault Lunch Portal | Admin Dashboard</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-
-<link rel="stylesheet" href="styles.css">
-
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
     <nav class="navbar navbar-expand-lg custom-navbar py-3 bg-dark">
@@ -72,6 +70,43 @@
                         <div class="card-body text-center">
                             <h6 class="text-secondary">Mixed Preference</h6>
                             <h2 id="metricBoth" class="fw-bold text-warning">0</h2>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+
+    <section class="pb-4">
+        <div class="container">
+            <div class="card shadow-sm border-0">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h4 class="fw-bold mb-0">Weekly Vendor Order Summary</h4>
+                        <span class="badge bg-info text-dark">Auto-Generated from Active Menu</span>
+                    </div>
+
+
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <div class="p-3 border rounded bg-light text-center">
+                                <h6 class="text-muted mb-1">Participating Employees</h6>
+                                <h3 id="summaryEmployees" class="fw-bold text-success mb-0">0</h3>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="p-3 border rounded bg-light text-center">
+                                <h6 class="text-muted mb-1">Missing / No Order</h6>
+                                <h3 id="summaryMissing" class="fw-bold text-secondary mb-0">0</h3>
+                            </div>
+                        </div>
+                    </div>
+
+
+                    <div id="dynamicVendorSummaryContainer" class="row g-3">
+                        <div class="col-12 text-center text-muted py-3">
+                            Calculating dynamic weekly order counts...
                         </div>
                     </div>
                 </div>
@@ -151,14 +186,14 @@
     </footer>
 
 
-   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
 
     <script>
         // ==========================================
         // COMMVAULT ADMIN DASHBOARD INLINE SCRIPT
         // ==========================================
-       const supabaseUrl = 'https://udqraywfsemkulraudbd.supabase.co';
-
+        const supabaseUrl = 'https://udqraywfsemkulraudbd.supabase.co';
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVkcXJheXdmc2Vta3VscmF1ZGJkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQxMzI2NjEsImV4cCI6MjA5OTcwODY2MX0.2VWPvdoJP-bYalmBa56wqqEWX8jPABNgFokYomQo2Rk';
         const db = supabase.createClient(supabaseUrl, supabaseKey);
 
@@ -210,6 +245,88 @@
         }
 
 
+        // ==========================================
+        // FULLY DYNAMIC VENDOR SUMMARY GENERATOR
+        // ==========================================
+        function renderDynamicVendorSummary(orders) {
+            const container = document.getElementById("dynamicVendorSummaryContainer");
+            const categories = ["monday", "tuesday", "wednesday", "thursday", "bagels", "bubbakoos", "icecream"];
+            
+            let totalParticipating = 0;
+            let totalMissing = 0;
+
+
+            // Map to hold aggregated counts: { CategoryName: { OptionName: Count } }
+            const summaryMap = {};
+            categories.forEach(cat => summaryMap[cat] = {});
+
+
+            orders.forEach(order => {
+                let orderHasSelections = false;
+
+
+                categories.forEach(cat => {
+                    const rawVal = order[cat];
+                    if (rawVal && String(rawVal).trim() !== "" && String(rawVal).toLowerCase() !== "none") {
+                        orderHasSelections = true;
+                        const itemStr = String(rawVal).trim();
+                        summaryMap[cat][itemStr] = (summaryMap[cat][itemStr] || 0) + 1;
+                    }
+                });
+
+
+                if (orderHasSelections) {
+                    totalParticipating++;
+                } else {
+                    totalMissing++;
+                }
+            });
+
+
+            document.getElementById("summaryEmployees").textContent = totalParticipating;
+            document.getElementById("summaryMissing").textContent = totalMissing;
+
+
+            // Render summary cards dynamically
+            container.innerHTML = "";
+
+
+            categories.forEach(cat => {
+                const options = summaryMap[cat];
+                const optionKeys = Object.keys(options);
+                
+                // Format Category Title (e.g. "monday" -> "Monday")
+                const catTitle = cat.charAt(0).toUpperCase() + cat.slice(1);
+
+
+                let cardBodyHtml = '';
+                if (optionKeys.length === 0) {
+                    cardBodyHtml = `<p class="text-muted mb-0 fs-7">No orders submitted</p>`;
+                } else {
+                    cardBodyHtml = optionKeys.map(optKey => `
+                        <div class="d-flex justify-content-between align-items-center mb-1">
+                            <span class="text-truncate me-2 fs-7" title="${optKey}">${optKey}</span>
+                            <span class="badge bg-primary rounded-pill">${options[optKey]}</span>
+                        </div>
+                    `).join('');
+                }
+
+
+                const colHtml = `
+                    <div class="col-md-4 col-lg-3">
+                        <div class="p-3 border rounded bg-light h-100 shadow-sm">
+                            <h6 class="fw-bold text-dark border-bottom pb-2 mb-2">${catTitle}</h6>
+                            ${cardBodyHtml}
+                        </div>
+                    </div>
+                `;
+
+
+                container.insertAdjacentHTML('beforeend', colHtml);
+            });
+        }
+
+
         async function fetchLiveDashboardData() {
             const tableBody = document.getElementById("liveOrdersTableBody");
             try {
@@ -232,6 +349,11 @@
                 document.getElementById("metricBoth").textContent = bothCount;
 
 
+                // Dynamically Render Vendor Summary
+                renderDynamicVendorSummary(orders);
+
+
+                // Render Live Table Data
                 orders.sort((a, b) => (a.username || "").localeCompare(b.username || ""));
                 const search = document.getElementById("searchInput").value.toLowerCase().trim();
                 const filtered = orders.filter(order => (order.username || "").toLowerCase().includes(search));
