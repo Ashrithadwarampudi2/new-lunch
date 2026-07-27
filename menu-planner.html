@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Commvault Lunch Portal | Menu Planner</title>
+
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+   
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <style>
+        body {
+            background-color: #f8f1fa;
+        }
+        .planner-card {
+            background: white;
+            border-radius: 18px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,.08);
+        }
+        .planner-title {
+            color: #844896;
+            font-weight: 700;
+        }
+        .generate-btn {
+            background: #844896;
+            border: none;
+        }
+        .generate-btn:hover {
+            background: #6e3981;
+        }
+        .day-card {
+            border-left: 5px solid #844896;
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 15px;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, .05);
+        }
+        .meal-badge {
+            background-color: #e6d3eb;
+            color: #6e3981;
+            font-size: 0.8rem;
+            font-weight: 600;
+            padding: 4px 8px;
+            border-radius: 6px;
+        }
+    </style>
+</head>
+
+<body class="d-flex flex-column min-vh-100">
+
+    <nav class="navbar navbar-expand-lg custom-navbar py-3 bg-dark">
+        <div class="container d-flex justify-content-between align-items-center">
+            <a href="home.html">
+                <img src="images/images/commvault-logo.png" alt="Commvault Logo" class="navbar-logo" style="max-height:40px;">
+            </a>
+
+            <div class="navbar-nav ms-auto flex-row align-items-center gap-3">
+                <a class="nav-link text-white-50" href="home.html">Home</a>
+                <a class="nav-link text-white-50" href="admin-new.html">Dashboard</a>
+                <a class="btn btn-warning text-dark fw-bold btn-sm ms-2" href="menu-planner.html">
+                    Menu Planner
+                </a>
+                <button class="btn btn-outline-danger btn-sm ms-2" onclick="logout()">Logout</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container py-5">
+        <div class="planner-card">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h1 class="planner-title mb-0">Weekly Menu Planner</h1>
+                <span class="badge bg-secondary" id="adminBadge">Admin Access</span>
+            </div>
+            <p class="text-muted mb-4">Generate, review, and publish weekly lunch schedules for employees.</p>
+
+            <div class="mb-4">
+                <label class="form-label fw-bold" for="weekStart">Week Starting Date</label>
+                <input type="date" id="weekStart" class="form-control" style="max-width: 300px;">
+            </div>
+
+            <div class="alert alert-light border mb-4">
+                <strong>Planner Rules & Information</strong>
+                <ul class="mb-0 mt-2">
+                    <li>No duplicate cuisines in the same week</li>
+                    <li>No duplicate restaurants in the same week</li>
+                    <li>Friday includes both Breakfast & Lunch</li>
+                    <li>Publishing overwrites any existing menu scheduled for the selected week starting date</li>
+                </ul>
+            </div>
+
+            <div class="d-flex gap-3 mb-4">
+                <button id="generateMenuBtn" class="btn generate-btn text-white px-4 py-2">
+                    Generate Weekly Menu
+                </button>
+                <button id="regenerateBtn" class="btn btn-outline-secondary px-4 py-2">
+                    Regenerate
+                </button>
+            </div>
+
+            <div id="plannerStatus" class="alert alert-success d-none mb-4"></div>
+
+            <hr class="my-4">
+
+            <div id="menuResults"></div>
+
+            <div class="mt-4">
+                <button id="publishMenuBtn" class="btn btn-success px-4 py-2" disabled>
+                    Publish Menu
+                </button>
+            </div>
+
+            <hr class="my-5">
+
+            <h3 class="planner-title mb-3">Previous Menus</h3>
+            <div id="previousMenus">
+                <div class="day-card text-muted">
+                    Previous published menus will appear here.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer class="custom-footer py-4 text-center text-secondary bg-dark mt-auto">
+        <div class="container">
+            © 2026 Commvault Lunch Portal | Admin Menu Planner
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        // Initialize Supabase Connection
+        const supabaseUrl = 'https://udqraywfsemkulraudbd.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVkcXJheXdmc2Vta3VscmF1ZGJkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQxMzI2NjEsImV4cCI6MjA5OTcwODY2MX0.2VWPvdoJP-bYalmBa56wqqEWX8jPABNgFokYomQo2Rk';
+        const db = supabase.createClient(supabaseUrl, supabaseKey);
+
+        let generatedSchedule = [];
+
+        // Admin Access Verification
+        async function ensureAdminAccess(){
+            try {
+                const response = await fetch("/api/auth/me", { credentials: "include" });
+
+                if(!response.ok){
+                    window.location.href="login.html";
+                    return false;
+                }
+
+                const user = await response.json();
+
+                if(user.role !== "admin"){
+                    window.location.href="home.html";
+                    return false;
+                }
+
+                if (user.username) {
+                    document.getElementById("adminBadge").textContent = `Admin: ${user.username}`;
+                }
+
+                return true;
+            } catch(error){
+                console.error("Authentication Error:", error);
+                window.location.href="login.html";
+                return false;
+            }
+        }
+
+        // Menu Generation Logic
+        async function generateMenu() {
+            const statusBox = document.getElementById("plannerStatus");
+            statusBox.classList.remove("d-none", "alert-danger");
+            statusBox.classList.add("alert-success");
+            statusBox.textContent = "Loading restaurants from Supabase...";
+
+            const { data: restaurants, error } = await db
+                .from("resturants")
+                .select("*");
+
+            if (error) {
+                console.error("Restaurant load error:", error);
+                statusBox.classList.remove("alert-success");
+                statusBox.classList.add("alert-danger");
+                statusBox.textContent = "Could not load restaurants.";
+                return;
+            }
+
+            const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+            const selectedRestaurants = new Set();
+            const selectedCuisines = new Set();
+            generatedSchedule = [];
+
+            function getAvailableRestaurant(serviceFilter = null) {
+                const shuffled = [...restaurants].sort(() => 0.5 - Math.random());
+                return shuffled.find(r => {
+                    const isServiceMatch = !serviceFilter ||
+                        r.service_type?.toLowerCase() === serviceFilter.toLowerCase();
+                    const notDuplicateRest = !selectedRestaurants.has(r.name);
+                    const notDuplicateCuisine = !selectedCuisines.has(r.cuisine_type);
+
+                    return isServiceMatch && notDuplicateRest && notDuplicateCuisine;
+                });
+            }
+
+            for (const day of days) {
+                if (day === "Friday") {
+                    const bfast = getAvailableRestaurant("Breakfast");
+                    if (bfast) {
+                        selectedRestaurants.add(bfast.name);
+                        selectedCuisines.add(bfast.cuisine_type);
+                    }
+                    const lunch = getAvailableRestaurant("Lunch");
+                    if (lunch) {
+                        selectedRestaurants.add(lunch.name);
+                        selectedCuisines.add(lunch.cuisine_type);
+                    }
+                    generatedSchedule.push({
+                        day: day,
+                        meals: [
+                            { type: "Breakfast", restaurant: bfast },
+                            { type: "Lunch", restaurant: lunch }
+                        ]
+                    });
+                } else {
+                    const lunch = getAvailableRestaurant("Lunch");
+                    if (lunch) {
+                        selectedRestaurants.add(lunch.name);
+                        selectedCuisines.add(lunch.cuisine_type);
+                    }
+                    generatedSchedule.push({
+                        day: day,
+                        meals: [
+                            { type: "Lunch", restaurant: lunch }
+                        ]
+                    });
+                }
+            }
+
+            statusBox.textContent = "Successfully generated weekly schedule!";
+            const publishBtn = document.getElementById("publishMenuBtn");
+            if (publishBtn) publishBtn.disabled = false;
+
+            // Render Schedule to UI
+            let html = "";
+            generatedSchedule.forEach((item) => {
+                html += `
+                    <div class="day-card">
+                        <h4 class="fw-bold mb-3" style="color: #844896;">${item.day}</h4>`;
+               
+                item.meals.forEach((m) => {
+                    if (m.restaurant) {
+                        html += `
+                            <div class="mb-2">
+                                <span class="meal-badge">${m.type}</span>
+                                <h5 class="d-inline ms-2">${m.restaurant.name}</h5>
+                                <p class="mb-1 text-muted ms-1" style="font-size: 0.9rem;">
+                                    <strong>Cuisine:</strong> ${m.restaurant.cuisine_type}
+                                </p>
+                            </div>`;
+                    } else {
+                        html += `
+                            <div class="mb-2 text-danger">
+                                <span class="meal-badge">${m.type}</span>
+                                No eligible restaurant found without violating rules.
+                            </div>`;
+                    }
+                });
+               
+                html += `</div>`;
+            });
+
+            document.getElementById("menuResults").innerHTML = html;
+        }
+
+        // Publish Schedule Logic
+        async function publishMenu() {
+            const statusBox = document.getElementById("plannerStatus");
+
+            if (generatedSchedule.length === 0) {
+                statusBox.classList.remove("d-none", "alert-success");
+                statusBox.classList.add("alert-danger");
+                statusBox.textContent = "Generate a menu first.";
+                return;
+            }
+
+            const weekStart = document.getElementById("weekStart").value;
+            if (!weekStart) {
+                statusBox.classList.remove("d-none", "alert-success");
+                statusBox.classList.add("alert-danger");
+                statusBox.textContent = "Please choose a week start date.";
+                return;
+            }
+
+            const rows = [];
+            generatedSchedule.forEach(day => {
+                day.meals.forEach(meal => {
+                    if (meal.restaurant) {
+                        rows.push({
+    week_start_date: weekStart,
+    day_of_week: day.day,
+    meal_type: meal.type,
+    restaurant_name:
+        meal.restaurant.name,
+    is_approved: true
+});
+                    }
+                });
+            });
+
+            statusBox.classList.remove("d-none", "alert-danger");
+            statusBox.classList.add("alert-success");
+            statusBox.textContent = "Publishing menu to Supabase...";
+
+            // Delete existing records to allow overwriting
+            const { error: deleteError } = await db
+                .from("weekly_menus")
+                .delete()
+                .eq("week_start_date", weekStart);
+
+            if (deleteError) {
+                console.error("Delete error:", deleteError);
+                statusBox.classList.remove("alert-success");
+                statusBox.classList.add("alert-danger");
+                statusBox.textContent = `Overwrite failed: ${deleteError.message}`;
+                return;
+            }
+
+            // Insert new schedule rows
+            const { error: insertError } = await db
+                .from("weekly_menus")
+                .insert(rows);
+
+            if (insertError) {
+                console.error("Publish error:", insertError);
+                statusBox.classList.remove("alert-success");
+                statusBox.classList.add("alert-danger");
+                statusBox.textContent = `Publish failed: ${insertError.message}`;
+                return;
+            }
+
+            statusBox.textContent = "Menu published successfully!";
+        }
+
+        // Logout
+        async function logout(){
+            try {
+                await fetch("/logout", { method: "POST", credentials: "include" });
+            } catch(error){
+                console.error(error);
+            }
+            localStorage.clear();
+            window.location.href="login.html";
+        }
+
+        // Event Attachments
+        window.addEventListener("DOMContentLoaded", async () => {
+            const allowed = await ensureAdminAccess();
+            if (allowed) {
+                document.getElementById("generateMenuBtn").addEventListener("click", generateMenu);
+                document.getElementById("regenerateBtn").addEventListener("click", generateMenu);
+                document.getElementById("publishMenuBtn").addEventListener("click", publishMenu);
+            }
+        });
+    </script>
+</body>
+
+</html>

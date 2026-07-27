@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Commvault Lunch Portal | Admin Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+
+<link rel="stylesheet" href="styles.css">
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg custom-navbar py-3 bg-dark">
+        <div class="container d-flex justify-content-between align-items-center">
+            <a href="home.html">
+                <img src="images/images/commvault-logo.png" alt="Commvault Logo" class="navbar-logo" style="max-height:40px;">
+            </a>
+            <div class="navbar-nav ms-auto flex-row align-items-center gap-3">
+                <a class="nav-link text-white-50" href="home.html">Home</a>
+                <a class="nav-link active-link text-white fw-bold" href="admin.html">Dashboard</a>
+                <button class="btn btn-outline-danger btn-sm ms-2" onclick="logout()">Logout</button>
+            </div>
+        </div>
+    </nav>
+
+
+    <section class="py-5 bg-light">
+        <div class="container d-flex justify-content-between align-items-center">
+            <div>
+                <h1 class="fw-bold mb-2">Admin Dashboard</h1>
+                <p class="text-secondary mb-0">
+                    Review employee lunch orders, participation, and feedback messages in real time.
+                </p>
+            </div>
+            <a href="menu-planner.html" class="btn btn-success btn-lg shadow-sm">
+                Generate Weekly Menu
+            </a>
+        </div>
+    </section>
+
+
+    <section class="py-4">
+        <div class="container">
+            <div class="row g-4">
+                <div class="col-lg-3">
+                    <div class="card shadow-sm border-0">
+                        <div class="card-body text-center">
+                            <h6 class="text-secondary">Total Orders</h6>
+                            <h2 id="metricTotal" class="fw-bold text-primary">0</h2>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-3">
+                    <div class="card shadow-sm border-0">
+                        <div class="card-body text-center">
+                            <h6 class="text-secondary">Vegetarian</h6>
+                            <h2 id="metricVeg" class="fw-bold text-success">0</h2>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-3">
+                    <div class="card shadow-sm border-0">
+                        <div class="card-body text-center">
+                            <h6 class="text-secondary">Non-Vegetarian</h6>
+                            <h2 id="metricNonVeg" class="fw-bold text-danger">0</h2>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-3">
+                    <div class="card shadow-sm border-0">
+                        <div class="card-body text-center">
+                            <h6 class="text-secondary">Mixed Preference</h6>
+                            <h2 id="metricBoth" class="fw-bold text-warning">0</h2>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+
+    <section class="pb-5">
+        <div class="container">
+            <div class="card shadow-sm border-0 mb-4">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h4 class="fw-bold mb-0">Live Employee Orders</h4>
+                        <small class="text-muted">Last Updated: <span id="lastUpdated">Never</span></small>
+                    </div>
+                    <div class="mb-3">
+                        <input id="searchInput" class="form-control" type="text" placeholder="Search employee...">
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table table-striped align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Employee</th>
+                                    <th>Monday</th>
+                                    <th>Tuesday</th>
+                                    <th>Wednesday</th>
+                                    <th>Thursday</th>
+                                    <th>Bagels</th>
+                                    <th>Bubbakoos</th>
+                                    <th>Ice Cream</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="liveOrdersTableBody">
+                                <tr>
+                                    <td colspan="9" class="text-center py-4 text-muted">Loading employee orders...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+
+            <div class="card shadow-sm border-0">
+                <div class="card-body">
+                    <h4 class="fw-bold mb-3">Submitted Contact Messages</h4>
+                    <div class="table-responsive">
+                        <table class="table table-bordered align-middle">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Email</th>
+                                    <th>Message</th>
+                                    <th>Status</th>
+                                    <th>Submitted At</th>
+                                </tr>
+                            </thead>
+                            <tbody id="contactMessagesTableBody">
+                                <tr>
+                                    <td colspan="5" class="text-center py-4 text-muted">Loading contact messages...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+
+    <footer class="custom-footer py-4 text-center text-secondary bg-dark mt-auto">
+        <div class="container">
+            © 2026 Commvault Lunch Portal | Admin Dashboard
+        </div>
+    </footer>
+
+
+   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        // ==========================================
+        // COMMVAULT ADMIN DASHBOARD INLINE SCRIPT
+        // ==========================================
+       const supabaseUrl = 'https://udqraywfsemkulraudbd.supabase.co';
+
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVkcXJheXdmc2Vta3VscmF1ZGJkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQxMzI2NjEsImV4cCI6MjA5OTcwODY2MX0.2VWPvdoJP-bYalmBa56wqqEWX8jPABNgFokYomQo2Rk';
+        const db = supabase.createClient(supabaseUrl, supabaseKey);
+
+
+        async function ensureAdminAccess() {
+            try {
+                const response = await fetch("/api/auth/me", { credentials: "include" });
+                if (!response.ok) {
+                    window.location.href = "login.html";
+                    return false;
+                }
+                const user = await response.json();
+                if (user.role !== "admin") {
+                    window.location.href = "home.html";
+                    return false;
+                }
+                return true;
+            } catch (error) {
+                console.error("Authentication Error:", error);
+                window.location.href = "login.html";
+                return false;
+            }
+        }
+
+
+        function pickValue(order, keys, fallback = "None") {
+            for (const key of keys) {
+                const value = order[key];
+                if (value === undefined || value === null) continue;
+                if (typeof value === "string" && value.trim() !== "") return value.trim();
+                if (Array.isArray(value) && value.length > 0) return value.join(", ");
+            }
+            return fallback;
+        }
+
+
+        function mealBadge(type) {
+            const meal = (type || "").toLowerCase();
+            if (meal.includes("veg") && !meal.includes("non")) {
+                return '<span class="badge bg-success">Vegetarian</span>';
+            }
+            if (meal.includes("non")) {
+                return '<span class="badge bg-danger">Non-Veg</span>';
+            }
+            if (meal.includes("both")) {
+                return '<span class="badge bg-warning text-dark">Both</span>';
+            }
+            return '<span class="badge bg-secondary">None</span>';
+        }
+
+
+        async function fetchLiveDashboardData() {
+            const tableBody = document.getElementById("liveOrdersTableBody");
+            try {
+                const { data: orders, error: ordersError } = await db.from('lunch_orders').select('*');
+                if (ordersError) throw ordersError;
+
+
+                let vegCount = 0, nonVegCount = 0, bothCount = 0;
+                orders.forEach(order => {
+                    const status = (order.thursday || "").toLowerCase();
+                    if (status.includes("veg") && !status.includes("non")) vegCount++;
+                    else if (status.includes("non")) nonVegCount++;
+                    else if (status.includes("both")) bothCount++;
+                });
+
+
+                document.getElementById("metricTotal").textContent = orders.length;
+                document.getElementById("metricVeg").textContent = vegCount;
+                document.getElementById("metricNonVeg").textContent = nonVegCount;
+                document.getElementById("metricBoth").textContent = bothCount;
+
+
+                orders.sort((a, b) => (a.username || "").localeCompare(b.username || ""));
+                const search = document.getElementById("searchInput").value.toLowerCase().trim();
+                const filtered = orders.filter(order => (order.username || "").toLowerCase().includes(search));
+
+
+                tableBody.innerHTML = "";
+                if (filtered.length === 0) {
+                    tableBody.innerHTML = `<tr><td colspan="9" class="text-center py-4 text-muted">No orders found matching search criteria.</td></tr>`;
+                } else {
+                    filtered.forEach(order => {
+                        const row = document.createElement("tr");
+                        row.innerHTML = `
+                            <td class="fw-semibold">${pickValue(order, ["username"])}</td>
+                            <td>${pickValue(order, ["monday"])}</td>
+                            <td>${pickValue(order, ["tuesday"])}</td>
+                            <td>${pickValue(order, ["wednesday"])}</td>
+                            <td>${pickValue(order, ["thursday"])}</td>
+                            <td>${pickValue(order, ["bagels"])}</td>
+                            <td>${pickValue(order, ["bubbakoos"])}</td>
+                            <td>${pickValue(order, ["icecream"])}</td>
+                            <td>${mealBadge(pickValue(order, ["thursday"]))}</td>
+                        `;
+                        tableBody.appendChild(row);
+                    });
+                }
+                document.getElementById("lastUpdated").textContent = new Date().toLocaleTimeString();
+            } catch (error) {
+                console.error("Dashboard Orders Error:", error);
+                tableBody.innerHTML = `<tr><td colspan="9" class="text-center text-danger">Failed to load orders. Check Supabase connection.</td></tr>`;
+            }
+        }
+
+
+        async function fetchContactMessages() {
+            const tableBody = document.getElementById("contactMessagesTableBody");
+            try {
+                const { data: messages, error } = await db.from("contact_messages").select("*").order("created_at", { ascending: false });
+                if (error) throw error;
+
+
+                tableBody.innerHTML = "";
+                if (!messages || messages.length === 0) {
+                    tableBody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-muted">No contact messages received yet.</td></tr>`;
+                    return;
+                }
+
+
+                messages.forEach(msg => {
+                    const row = document.createElement("tr");
+                    const createdDate = msg.created_at ? new Date(msg.created_at).toLocaleString() : "N/A";
+                    row.innerHTML = `
+                        <td class="fw-semibold">${msg.name || "N/A"}</td>
+                        <td>${msg.email || "N/A"}</td>
+                        <td>${msg.message || "N/A"}</td>
+                        <td><span class="badge bg-warning text-dark">${msg.status || "Pending"}</span></td>
+                        <td><small class="text-muted">${createdDate}</small></td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            } catch (error) {
+                console.error("Fetch Messages Error:", error);
+                tableBody.innerHTML = `<tr><td colspan="5" class="text-center text-danger">Failed to load contact messages.</td></tr>`;
+            }
+        }
+
+
+        async function logout() {
+            try {
+                await fetch("/logout", { method: "POST", credentials: "include" });
+            } catch (error) {
+                console.error(error);
+            }
+            localStorage.clear();
+            window.location.href = "login.html";
+        }
+
+
+        window.addEventListener("DOMContentLoaded", async () => {
+            const searchInput = document.getElementById("searchInput");
+            if (searchInput) {
+                searchInput.addEventListener("input", fetchLiveDashboardData);
+            }
+            const allowed = await ensureAdminAccess();
+            if (allowed) {
+                fetchLiveDashboardData();
+                fetchContactMessages();
+            }
+        });
+    </script>
+</body>
+</html>
+
+
+

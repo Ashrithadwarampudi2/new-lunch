@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lunch Project - Login & Register</title>
+    <link rel="stylesheet" href="styles.css">
+    <style>
+        /* Embedded styling isolated specifically for this layout framework structure */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #1e1e1e;
+            color: #ffffff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background-color: #2d2d2d;
+            padding: 30px;
+            border-radius: 8px;
+            width: 350px;
+        }
+        h2 { text-align: center; color: #4fc3f7; margin-bottom: 20px; }
+        label { display: block; margin: 10px 0 5px; color: #b0bec5; }
+        input, select {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #444;
+            border-radius: 4px;
+            background-color: #3d3d3d;
+            color: #fff;
+            box-sizing: border-box;
+        }
+        button {
+            width: 100%;
+            padding: 12px;
+            background-color: #00e676;
+            border: none;
+            border-radius: 4px;
+            color: #121212;
+            font-weight: bold;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        .toggle-link {
+            text-align: center;
+            margin-top: 15px;
+            font-size: 14px;
+            color: #4fc3f7;
+            cursor: pointer;
+        }
+        .message {
+            text-align: center;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div id="loginFormContainer" style="display: block;">
+        <h2>Login</h2>
+        <form id="loginForm">
+            <label for="loginUser">Username</label>
+            <input type="text" id="loginUser" name="username" required>
+
+            <label for="loginPass">Password</label>
+            <input type="password" id="loginPass" name="password" required>
+
+            <button type="submit">Sign In</button>
+        </form>
+        <p class="toggle-link" onclick="toggleForms()">Don't have an account? Register here</p>
+    </div>
+
+    <div id="registerFormContainer" style="display: none;">
+        <h2>Create Account</h2>
+        <form id="registerForm">
+            <label for="regUser">Username</label>
+            <input type="text" id="regUser" name="username" required>
+
+            <label for="regPass">Password</label>
+            <input type="password" id="regPass" name="password" minlength="6" required>
+            <small style="color: #888; display: block; margin-top: -10px; margin-bottom: 10px;">Minimum 6 characters</small>
+
+            <label for="regRole">Account Type</label>
+            <select id="regRole" name="role">
+                <option value="user" selected>Standard User</option>
+                <option value="admin">Admin</option>
+            </select>
+
+            <button type="submit" style="background-color: #4fc3f7;">Sign Up</button>
+        </form>
+        <p class="toggle-link" onclick="toggleForms()">Already have an account? Login here</p>
+    </div>
+
+    <div class="message" id="msgBox"></div>
+</div>
+
+<script>
+    const loginContainer = document.getElementById("loginFormContainer");
+    const registerContainer = document.getElementById("registerFormContainer");
+    const msgBox = document.getElementById("msgBox");
+
+    // Toggle between showing Login and Register forms
+    function toggleForms() {
+        msgBox.textContent = "";
+        if (loginContainer.style.display === "none") {
+            loginContainer.style.display = "block";
+            registerContainer.style.display = "none";
+        } else {
+            loginContainer.style.display = "none";
+            registerContainer.style.display = "block";
+        }
+    }
+
+    // Patched: Added a verification step to confirm session with backend before allowing dashboard navigation
+    async function checkExistingSession() {
+        const savedUsername = localStorage.getItem("username");
+        const savedRole = localStorage.getItem("userRole");
+
+        if (savedUsername && savedRole) {
+            try {
+                const response = await fetch("/api/auth/me");
+                if (response.ok) {
+                    window.location.href = savedRole === "admin" ? "admin.html" : "home.html";
+                } else {
+                    localStorage.clear();
+                }
+            } catch (err) {
+                console.error("Session verification error:", err);
+            }
+        }
+    }
+
+    document.addEventListener("DOMContentLoaded", checkExistingSession);
+
+    // Handle Account Registration
+    document.getElementById("registerForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const username = document.getElementById("regUser").value.trim();
+        const password = document.getElementById("regPass").value;
+        const role = document.getElementById("regRole").value;
+        const submitButton = document.querySelector("#registerForm button[type='submit']");
+
+        if (username.length < 3) {
+            msgBox.style.color = "#ff5252";
+            msgBox.textContent = "Username must be at least 3 characters.";
+            return;
+        }
+
+        if (submitButton) {
+            submitButton.disabled = true;
+            submitButton.textContent = "Creating account...";
+        }
+
+        try {
+            const response = await fetch("/register", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ username, password, role })
+            });
+
+            const data = await response.json();
+            if (response.ok) {
+                msgBox.style.color = "#00e676";
+                msgBox.textContent = data.message + " Switching to login...";
+                setTimeout(toggleForms, 2000);
+            } else {
+                msgBox.style.color = "#ff5252";
+                msgBox.textContent = data.error;
+            }
+        } catch (error) {
+            msgBox.style.color = "#ff5252";
+            msgBox.textContent = "Network error. Please try again.";
+            console.error("Registration error:", error);
+        } finally {
+            if (submitButton) {
+                submitButton.disabled = false;
+                submitButton.textContent = "Sign Up";
+            }
+        }
+    });
+
+    // Handle Account Login
+    document.getElementById("loginForm").addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const username = document.getElementById("loginUser").value.trim();
+        const password = document.getElementById("loginPass").value;
+        const submitButton = document.querySelector("#loginForm button[type='submit']");
+
+        if (submitButton) {
+            submitButton.disabled = true;
+            submitButton.textContent = "Signing in...";
+        }
+
+        try {
+            const response = await fetch("/login", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ username, password })
+            });
+
+            const data = await response.json();
+            if (response.ok) {
+                msgBox.style.color = "#00e676";
+                msgBox.textContent = `Welcome ${data.username}! Redirecting...`;
+               
+                // Keep LocalStorage populated for UI fallback layouts
+                localStorage.setItem("username", data.username);
+                localStorage.setItem("userRole", data.role);
+
+                // Patched: Increased timeout slightly to guarantee cookie generation on slow development servers
+                setTimeout(() => {
+                    if (data.role === "admin") {
+                        window.location.replace("admin-new.html");
+                    } else {
+                        window.location.replace("home.html");
+                    }
+                }, 800);
+            } else {
+                msgBox.style.color = "#ff5252";
+                msgBox.textContent = data.error;
+            }
+        } catch (error) {
+            msgBox.style.color = "#ff5252";
+            msgBox.textContent = "Network error. Please try again.";
+            console.error("Login error:", error);
+        } finally {
+            if (submitButton) {
+                submitButton.disabled = false;
+                submitButton.textContent = "Sign In";
+            }
+        }
+    });
+</script>
+
+</body>
+</html>

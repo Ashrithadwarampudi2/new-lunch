@@ -1,0 +1,1081 @@
+/* ==========================================================
+   COMMVAULT LUNCH PORTAL DESIGN SYSTEM
+========================================================== */
+
+:root {
+
+    /* Brand Colors */
+
+    --midnight: #00053B;
+    --crocus: #844896;
+    --hover-state: #4F2B5A;
+
+    /* Neutrals */
+
+    --white: #FFFFFF;
+    --fog: #EAEAEA;
+    --black: #000000;
+    --dark-gray: #333333;
+    --light-gray: #777777;
+
+    /* Accent Colors */
+
+    --rose: #EA2C63;
+    --grass: #40B42E;
+    --water: #36BBF4;
+    --sun: #EEC901;
+
+    /* Shadows */
+
+    --shadow-sm: 0 4px 12px rgba(0,0,0,.08);
+    --shadow-md: 0 10px 25px rgba(0,0,0,.12);
+    --shadow-lg: 0 15px 40px rgba(0,0,0,.16);
+
+    /* Radius */
+
+    --radius-sm: 8px;
+    --radius-md: 16px;
+    --radius-lg: 24px;
+
+    /* Transitions */
+
+    --transition: 0.3s ease;
+}
+
+/* ==========================================================
+   GLOBAL
+========================================================== */
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+}
+
+html{
+    scroll-behavior:smooth;
+}
+
+body{
+    font-family:"Segoe UI",sans-serif;
+    background:var(--white);
+    color:var(--black);
+}
+
+/* ==========================================================
+   NAVBAR
+========================================================== */
+
+.custom-navbar{
+    background:var(--midnight);
+    box-shadow:var(--shadow-sm);
+}
+.navbar-toggler{
+
+    border:1px solid rgba(255,255,255,.25);
+
+    background:white;
+}
+
+.navbar-toggler:focus{
+
+    box-shadow:none;
+}
+
+.logo-box{
+    width:24px;
+    height:24px;
+    border-radius:4px;
+    display:inline-block;
+    background:var(--crocus);
+}
+
+.nav-link{
+    transition:var(--transition);
+}
+
+.nav-link:hover{
+    color:var(--white) !important;
+}
+
+.active-link{
+    color:var(--white) !important;
+    font-weight:600;
+}
+
+.btn-contact{
+    background:var(--rose);
+    border:none;
+    border-radius:var(--radius-sm);
+}
+
+.btn-contact:hover{
+    background:#c31f52;
+    color:var(--white);
+}
+.navbar-logo{
+    height:55px;
+    width:auto;
+    display:block;
+}
+
+/* ==========================================================
+   HERO SECTION
+========================================================== */
+
+.hero-section{
+    background:var(--fog);
+    padding:80px 0;
+}
+
+.hero-card{
+    background:var(--white);
+    max-width:1200px;
+    border-radius:var(--radius-lg);
+    box-shadow:var(--shadow-lg);
+    padding:50px;
+}
+
+.hero-image{
+    width:100%;
+    max-height:400px;
+    object-fit:cover;
+    border-radius:var(--radius-lg);
+    box-shadow:var(--shadow-md);
+}
+
+.btn-dark-action{
+    background:var(--midnight);
+    color:var(--white);
+    border:none;
+    border-radius:var(--radius-sm);
+    transition:var(--transition);
+}
+
+.btn-dark-action:hover{
+    background:var(--crocus);
+    color:var(--white);
+}
+
+.max-w-sm{
+    max-width:500px;
+}
+
+/* ==========================================================
+   MODAL
+========================================================== */
+
+.modal-content{
+    border-radius:var(--radius-lg);
+    box-shadow:var(--shadow-lg);
+}
+
+.btn-primary-action{
+    background:var(--crocus);
+    color:var(--white);
+    border:none;
+    border-radius:var(--radius-sm);
+    transition:var(--transition);
+}
+
+.btn-primary-action:hover{
+    background:var(--hover-state);
+    color:var(--white);
+}
+
+.btn-outline-custom{
+    background:var(--white);
+    border:2px solid var(--fog);
+    color:var(--black);
+}
+
+.btn-check:checked + .btn-outline-custom{
+    background:var(--crocus);
+    border-color:var(--crocus);
+    color:var(--white);
+}
+
+/* ==========================================================
+   MENU PAGE
+========================================================== */
+
+.menu-hero{
+    background: linear-gradient(135deg, var(--midnight) 0%, var(--crocus) 100%);
+    color: var(--white);
+    padding: 90px 0 70px;
+}
+
+.hero-overlay{
+    background: rgba(0, 0, 0, 0.18);
+    padding: 20px 0;
+}
+
+.hero-pill{
+    display: inline-block;
+    padding: 8px 16px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.18);
+    border: 1px solid rgba(255,255,255,0.25);
+    font-size: 0.85rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    font-weight: 600;
+}
+
+.food-ticker{
+    background: linear-gradient(90deg, #f7f2fa 0%, #f4f7ff 100%);
+    overflow: hidden;
+    padding: 14px 0;
+    border-top: 1px solid rgba(132,72,150,0.12);
+    border-bottom: 1px solid rgba(132,72,150,0.12);
+}
+
+.ticker-track{
+    display: flex;
+    gap: 24px;
+    width: max-content;
+    animation: scrollTicker 22s linear infinite;
+    white-space: nowrap;
+    padding-left: 100%;
+}
+
+.ticker-track span{
+    color: var(--midnight);
+    font-weight: 600;
+    font-size: 0.95rem;
+}
+
+@keyframes scrollTicker {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+}
+
+.menu-card-custom{
+    background: linear-gradient(145deg, #ffffff 0%, #f9f7ff 100%);
+    color: var(--black);
+    border-radius: var(--radius-md);
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.08);
+    transition: var(--transition);
+    border: 1px solid rgba(132,72,150,0.12);
+}
+
+.menu-card-custom:hover{
+    transform: translateY(-6px);
+    box-shadow: 0 16px 32px rgba(79, 43, 90, 0.16);
+}
+
+.menu-card-custom h4,
+.menu-card-custom h5{
+    color: var(--midnight);
+}
+
+.menu-card-custom .text-primary{
+    color: var(--crocus) !important;
+}
+
+.img-mock-box{
+    width:70px;
+    height:70px;
+    border-radius:12px;
+    background:var(--fog);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    margin:auto;
+}
+
+.img-mock-box img{
+    width:100%;
+    height:100%;
+    object-fit:cover;
+    border-radius:12px;
+}
+
+.btn-survey-link{
+    background:var(--crocus);
+    color:var(--white);
+    text-decoration:none;
+    transition:var(--transition);
+}
+
+.btn-survey-link:hover{
+    background:var(--hover-state);
+    color:var(--white);
+}
+
+#menuDateRange{
+    color:var(--light-gray);
+}
+
+/* ==========================================================
+   SURVEY PAGE
+========================================================== */
+
+.survey-section{
+
+    min-height:100vh;
+
+    background:
+        radial-gradient(
+            circle at top left,
+            rgba(132,72,150,.22),
+            transparent 400px
+        ),
+
+        radial-gradient(
+            circle at bottom right,
+            rgba(54,187,244,.20),
+            transparent 500px
+        ),
+
+        linear-gradient(
+            135deg,
+            #f8f9ff,
+            #f0ebfa,
+            #edf7ff
+        );
+
+    padding:80px 0;
+}
+
+.survey-card-wrapper{
+
+    max-width:1000px;
+
+    margin:auto;
+
+    background:rgba(255,255,255,.95) !important;
+
+    border-radius:32px;
+
+    border:1px solid rgba(255,255,255,.75);
+
+    box-shadow:
+        0 25px 70px rgba(0,0,0,.12);
+
+    backdrop-filter:blur(12px);
+}
+.survey-question{
+
+    background:white;
+
+    padding:25px;
+
+    border-radius:20px;
+
+    margin-bottom:25px;
+
+    box-shadow:
+        0 8px 20px rgba(0,0,0,.05);
+
+    border-left:6px solid var(--crocus);
+}
+
+.survey-item label{
+    line-height:1.5;
+}
+
+.form-check-input:checked{
+    background-color:var(--crocus);
+    border-color:var(--crocus);
+}
+
+.btn-submit-survey{
+    background:var(--grass);
+    border:none;
+    border-radius:var(--radius-sm);
+    transition:var(--transition);
+}
+
+.btn-submit-survey:hover{
+    background:#2f8e21;
+}
+
+/* ==========================================================
+   SUCCESS MODAL
+========================================================== */
+
+#successModal .modal-content{
+    background:var(--fog);
+}
+
+#successModal .btn-link{
+    transition:var(--transition);
+}
+
+#successModal .btn-link:hover{
+    background:var(--white);
+}
+
+/* ==========================================================
+   FOOTER
+========================================================== */
+
+.custom-footer{
+    background:var(--midnight);
+}
+
+.custom-footer a{
+    transition:var(--transition);
+}
+
+.custom-footer a:hover{
+    color:var(--white) !important;
+}
+
+.custom-footer .logo-box{
+    background:var(--white);
+}
+
+/* ==========================================================
+   UTILITIES
+========================================================== */
+
+.tracking-tight{
+    letter-spacing:-0.5px;
+}
+
+.tracking-wide{
+    letter-spacing:1px;
+}
+
+.italic{
+    font-style:italic;
+}
+
+/* ==========================================================
+   RESPONSIVE
+========================================================== */
+
+@media (max-width: 992px){
+
+    .hero-card{
+        padding:30px;
+        text-align:center;
+    }
+
+    .hero-image{
+        margin-top:25px;
+    }
+
+}
+
+@media (max-width: 768px){
+
+    .navbar-nav{
+        flex-direction:column !important;
+        gap:10px !important;
+        margin-top:15px;
+    }
+
+    .hero-card{
+        padding:25px;
+    }
+
+    .survey-card-wrapper{
+        padding:25px !important;
+    }
+
+}
+
+/* ==========================================================
+   HERO IMPROVEMENTS
+========================================================== */
+
+.hero-section{
+
+    background:
+        linear-gradient(
+            135deg,
+            #f8f9ff,
+            #eee7fa
+        );
+
+    padding:90px 0;
+}
+
+.hero-card{
+
+    background:rgba(255,255,255,.95);
+
+    border-radius:32px;
+
+    border:1px solid rgba(255,255,255,.6);
+
+    box-shadow:
+        0 20px 50px rgba(0,0,0,.12);
+}
+
+/* ==========================================================
+   FEATURES SECTION
+========================================================== */
+
+.features-section{
+
+    padding:90px 0;
+
+    background:
+        radial-gradient(
+            circle at top right,
+            rgba(132,72,150,.08),
+            transparent 350px
+        ),
+        #faf8fd;
+}
+
+.section-tag{
+
+    color:var(--crocus);
+
+    font-weight:700;
+
+    letter-spacing:2px;
+
+    font-size:.85rem;
+
+    margin-bottom:10px;
+}
+
+.feature-link{
+
+    text-decoration:none;
+    color:inherit;
+}
+
+.feature-image{
+
+    width:180px;
+
+    max-width:100%;
+
+    height:auto;
+
+    display:block;
+
+    margin:0 auto 20px;
+
+    transition:var(--transition);
+}
+
+.feature-menu,
+.feature-survey,
+.feature-card{
+
+    min-height:380px;
+
+    border-radius:24px !important;
+
+    overflow:hidden;
+
+    transition:all .3s ease;
+
+    cursor:pointer;
+}
+
+.feature-menu{
+
+    border-top:8px solid var(--water);
+}
+
+.feature-survey{
+
+    border-top:8px solid var(--grass);
+}
+
+.feature-card{
+
+    border-top:8px solid var(--sun);
+}
+
+.feature-menu:hover,
+.feature-survey:hover,
+.feature-card:hover{
+
+    transform:translateY(-10px);
+
+    box-shadow:
+        0 20px 45px rgba(0,0,0,.15);
+}
+
+.feature-menu:hover .feature-image,
+.feature-survey:hover .feature-image,
+.feature-card:hover .feature-image{
+
+    transform:scale(1.05);
+}
+
+/* ==========================================================
+   BUTTONS
+========================================================== */
+
+.btn-primary-action,
+.btn-dark-action{
+
+    padding:12px 28px;
+
+    font-weight:600;
+}
+
+/* ==========================================================
+   FOOTER IMPROVEMENTS
+========================================================== */
+
+.custom-footer{
+
+    background:var(--midnight);
+
+    border-top:4px solid var(--crocus);
+}
+/* ==========================================================
+   MENU PAGE ENHANCEMENTS
+========================================================== */
+
+.menu-hero{
+
+    background:
+        linear-gradient(
+            rgba(0,5,59,.75),
+            rgba(0,5,59,.75)
+        ),
+        url("menu-hero.jpg");
+
+    background-size:cover;
+    background-position:center;
+
+    padding:140px 0;
+}
+
+.hero-overlay{
+
+    color:white;
+
+    text-shadow:
+        0 2px 10px rgba(0,0,0,.5);
+}
+
+.hero-pill{
+
+    background:rgba(255,255,255,.18);
+
+    border:1px solid rgba(255,255,255,.25);
+
+    padding:12px 24px;
+
+    border-radius:999px;
+
+    backdrop-filter:blur(12px);
+
+    box-shadow:
+        0 10px 25px rgba(0,0,0,.2);
+
+    font-weight:600;
+}
+
+.food-ticker{
+
+    overflow:hidden;
+
+    background:white;
+
+    padding:18px 0;
+
+    border-top:1px solid #eee;
+
+    border-bottom:1px solid #eee;
+}
+
+.ticker-track{
+
+    display:flex;
+
+    gap:50px;
+
+    white-space:nowrap;
+
+    animation:foodScroll 25s linear infinite;
+}
+
+.ticker-track span{
+
+    color:var(--crocus);
+
+    font-weight:600;
+}
+
+@keyframes foodScroll {
+
+    from{
+        transform:translateX(0);
+    }
+
+    to{
+        transform:translateX(-50%);
+    }
+}
+
+.menu-icon{
+
+    font-size:2rem;
+
+    margin-bottom:10px;
+}
+
+.menu-card-custom{
+
+    border-radius:22px !important;
+
+    transition:.3s ease;
+}
+
+.menu-card-custom:hover{
+
+    transform:translateY(-8px);
+
+    box-shadow:0 20px 40px rgba(0,0,0,.15);
+}
+
+.day-monday{
+    border-top:6px solid #EA2C63 !important;
+}
+
+.day-tuesday{
+    border-top:6px solid #36BBF4 !important;
+}
+
+.day-wednesday{
+    border-top:6px solid #40B42E !important;
+}
+
+.day-thursday{
+    border-top:6px solid #EEC901 !important;
+}
+
+.day-friday{
+    border-top:6px solid #844896 !important;
+}
+
+.special-food-card{
+
+    background:#fafafa;
+
+    border:1px solid #ececec;
+
+    border-radius:16px;
+
+    padding:20px;
+
+    text-align:center;
+
+    height:100%;
+}
+
+.special-food-card h5{
+
+    color:#844896;
+
+    font-weight:700;
+}
+
+.menu-hero{
+
+    background:
+        linear-gradient(
+            rgba(0,5,59,.45),
+            rgba(0,5,59,.45)
+        ),
+        url("images/images/MenuI.png");
+
+    background-size:cover;
+
+    background-position:center;
+
+    background-repeat:no-repeat;
+
+    padding:180px 0;
+}
+
+.week-highlight{
+
+    background:white;
+
+    padding:14px 24px;
+
+    border-radius:999px;
+
+    font-weight:600;
+
+    color:var(--crocus);
+
+    box-shadow:
+        0 10px 25px rgba(0,0,0,.08);
+}
+
+.survey-hero{
+
+    background:
+        linear-gradient(
+            rgba(0,5,59,.35),
+            rgba(0,5,59,.35)
+        ),
+        url("images/images/Surveyimg.png");
+
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+
+    height: 220px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+/* Responsive container to embed your live survey link directly */
+      .embed-container {
+
+    position: relative;
+
+    width: 100%;
+
+    height: 900px;
+
+    border-radius: 24px;
+
+    overflow: hidden;
+
+    border: 1px solid rgba(255,255,255,.6);
+
+    box-shadow:
+        0 20px 50px rgba(0,0,0,.12);
+}
+        .embed-container iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: 0;
+        }
+
+        @media (max-width: 991px){
+
+    .navbar-collapse{
+
+        margin-top:15px;
+
+        text-align:center;
+    }
+
+    .navbar-nav{
+
+        gap:10px;
+    }
+
+    .nav-link{
+
+        padding:10px 0;
+    }
+
+}
+
+.navbar-toggler{
+
+    background:white;
+
+    border:none;
+}
+
+.navbar-toggler:focus{
+
+    box-shadow:none;
+}
+
+@media (max-width:991px){
+
+    .navbar-collapse{
+
+        margin-top:15px;
+
+        text-align:center;
+    }
+
+    .navbar-nav{
+
+        align-items:center;
+    }
+
+    .navbar-logo{
+
+        height:40px;
+    }
+
+}
+
+.navbar-toggler-icon{
+
+    filter: invert(1);
+}
+
+#preferenceBadge{
+
+    background:
+        rgba(132,72,150,.12);
+
+    border:
+        1px solid rgba(132,72,150,.25);
+
+    color:
+        var(--crocus);
+
+    font-weight:600;
+
+    border-radius:16px;
+
+    padding:16px 20px;
+}
+
+/* Remove line 845 "log" - it's incomplete */
+
+/* ==========================================================
+   FORM CONTROLS & INPUTS
+========================================================== */
+
+.form-control {
+    border: 1px solid #ddd;
+    border-radius: var(--radius-sm);
+    transition: var(--transition);
+}
+
+.form-control:focus {
+    border-color: var(--crocus);
+    box-shadow: 0 0 0 3px rgba(132, 72, 150, 0.1);
+}
+
+.form-check-input {
+    width: 20px;
+    height: 20px;
+    border: 2px solid #ddd;
+    border-radius: 4px;
+    transition: var(--transition);
+    cursor: pointer;
+}
+
+.form-check-input:checked {
+    background-color: var(--crocus);
+    border-color: var(--crocus);
+}
+
+.form-check-input:focus {
+    box-shadow: 0 0 0 3px rgba(132, 72, 150, 0.1);
+}
+
+/* ==========================================================
+   SUSHI OPTIONS STYLING
+========================================================== */
+
+.sushi-option {
+    cursor: pointer;
+    accent-color: var(--crocus);
+}
+
+.sushi-option:checked {
+    accent-color: var(--crocus);
+}
+
+/* ==========================================================
+   PREFERENCE DROPDOWN
+========================================================== */
+
+#tuesdayChoice,
+#wednesdayChoice {
+    border: 1px solid #ddd;
+    border-radius: var(--radius-sm);
+    padding: 8px 12px;
+    transition: var(--transition);
+}
+
+#tuesdayChoice:focus,
+#wednesdayChoice:focus {
+    border-color: var(--crocus);
+    box-shadow: 0 0 0 3px rgba(132, 72, 150, 0.1);
+    outline: none;
+}
+
+/* ==========================================================
+   BUTTON CENTERING FIX
+========================================================== */
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.btn-submit-survey,
+.btn-primary-action,
+.btn-dark-action {
+    font-weight: 600;
+    padding: 12px 28px;
+    text-align: center;
+}
+
+/* ==========================================================
+   CONTACT FORM STYLING
+========================================================== */
+
+#contactForm .form-control,
+#updatesForm .form-control,
+#lunchSurveyForm .form-control {
+    border: 1px solid #ddd;
+    border-radius: var(--radius-sm);
+    padding: 10px 14px;
+}
+
+#contactForm textarea,
+#updatesForm textarea,
+#lunchSurveyForm textarea {
+    resize: vertical;
+    min-height: 120px;
+}
+
+/* ==========================================================
+   MODAL BUTTON STYLING
+========================================================== */
+
+.modal-footer .btn {
+    min-width: 100px;
+}
+
+
+
+.custom-modal-header {
+    background-color: var(--crocus);
+    color: white;
+}
+
+.custom-modal-btn {
+    background-color: var(--crocus);
+    border-color: var(--crocus);
+    color: white;
+}
+
+.custom-modal-btn:hover {
+    background-color: #703c80;
+    border-color: #703c80;
+    color: white;
+}
+
+.form-check {
+    padding: 12px;
+    border-radius: 12px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.form-check:hover {
+    background-color: rgba(132, 72, 150, 0.08);
+}
+
+.form-check-label {
+    cursor: pointer;
+}
