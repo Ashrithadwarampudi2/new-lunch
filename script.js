@@ -260,6 +260,31 @@ async function loadMenuPage() {
             m => m.week_start_date === latestWeek
         );
 
+        // ==========================================
+        // ADDED SORTING LOGIC HERE
+        // ==========================================
+        const dayOrder = {
+            "Monday": 1,
+            "Tuesday": 2,
+            "Wednesday": 3,
+            "Thursday": 4,
+            "Friday": 5
+        };
+
+        const mealOrder = {
+            "Breakfast": 1,
+            "Lunch": 2
+        };
+
+        currentMenus.sort((a, b) => {
+            const dayDiff = (dayOrder[a.day_of_week] || 99) - (dayOrder[b.day_of_week] || 99);
+            if (dayDiff !== 0) return dayDiff;
+            
+            // If the days match (like Friday), sort Breakfast before Lunch
+            return (mealOrder[a.meal_type] || 99) - (mealOrder[b.meal_type] || 99);
+        });
+        // ==========================================
+
         const dateLabel = document.getElementById("week-date-range");
         if (dateLabel) {
             dateLabel.textContent = `Week of ${latestWeek}`;

@@ -146,6 +146,39 @@ app.get("/api/auth/me", authenticateToken, (req, res) => {
     res.json({ username: req.user.username, role: req.user.role });
 });
 
+
+// Register New Account Endpoint
+app.post("/register", async (req, res) => {
+    const { username, password, role } = req.body;
+
+    if (!username || !password) {
+        return res.status(400).json({ error: "Username and password are required." });
+    }
+
+    try {
+        const hashedPassword = await bcrypt.hash(password, 10);
+        const userRole = role === "admin" ? "admin" : "user"; // Default to standard user
+
+        db.run(
+            `INSERT INTO users (username, password, role) VALUES (?, ?, ?)`,
+            [username.trim(), hashedPassword, userRole],
+            function (err) {
+                if (err) {
+                    if (err.message.includes("UNIQUE")) {
+                        return res.status(400).json({ error: "Username already exists." });
+                    }
+                    return res.status(500).json({ error: "Failed to create account." });
+                }
+                res.status(201).json({ message: "Account created successfully!" });
+            }
+        );
+    } catch (err) {
+        res.status(500).json({ error: "Server error creating account." });
+    }
+});
+ 
+
+
 // Logout Endpoint
 app.post("/logout", (req, res) => {
     res.clearCookie("auth_token");

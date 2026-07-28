@@ -1,63 +1,167 @@
 <!DOCTYPE html>
 <html lang="en">
 
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Commvault Lunch Portal | Menu Planner</title>
 
+
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
-   
+    
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 
     <style>
         body {
-            background-color: #f8f1fa;
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
         }
+
+
         .planner-card {
-            background: white;
-            border-radius: 18px;
-            padding: 30px;
-            box-shadow: 0 10px 30px rgba(0,0,0,.08);
+            background: #ffffff;
+            border-radius: 20px;
+            padding: 35px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+            border: 1px solid #e9ecef;
         }
+
+
         .planner-title {
             color: #844896;
-            font-weight: 700;
+            font-weight: 800;
+            letter-spacing: -0.5px;
         }
-        .generate-btn {
-            background: #844896;
+
+
+        /* Cute Styled Buttons */
+        .btn-cute-primary {
+            background: linear-gradient(135deg, #9a53ad, #844896);
             border: none;
+            color: white;
+            font-weight: 700;
+            border-radius: 20px;
+            transition: all 0.2s ease-in-out;
+            box-shadow: 0 4px 12px rgba(132, 72, 150, 0.2);
         }
-        .generate-btn:hover {
-            background: #6e3981;
+
+
+        .btn-cute-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(132, 72, 150, 0.3);
+            background: linear-gradient(135deg, #88459a, #6e3981);
+            color: white;
         }
-        .day-card {
-            border-left: 5px solid #844896;
+
+
+        .btn-cute-outline {
+            border: 2px solid #dcbce3;
+            color: #844896;
+            font-weight: 600;
+            border-radius: 20px;
             background: white;
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 15px;
-            box-shadow: 0 3px 10px rgba(0, 0, 0, .05);
+            transition: all 0.2s ease-in-out;
         }
+
+
+        .btn-cute-outline:hover {
+            background: #f8f4f9;
+            color: #6e3981;
+            border-color: #c79bd1;
+        }
+
+
+        .btn-cute-success {
+            background: linear-gradient(135deg, #62c370, #429850);
+            border: none;
+            color: white;
+            font-weight: 700;
+            border-radius: 20px;
+            transition: all 0.2s ease-in-out;
+            box-shadow: 0 4px 12px rgba(66, 152, 80, 0.2);
+        }
+
+
+        .btn-cute-success:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(66, 152, 80, 0.3);
+        }
+
+
+        /* Day Cards & Badges */
+        .day-card {
+            border: none;
+            background: #faf7fc;
+            border-radius: 16px;
+            padding: 22px;
+            margin-bottom: 18px;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, .03);
+            border-left: 6px solid #844896;
+            transition: transform 0.2s ease;
+        }
+
+
+        .day-card:hover {
+            transform: translateY(-2px);
+        }
+
+
         .meal-badge {
             background-color: #e6d3eb;
             color: #6e3981;
-            font-size: 0.8rem;
-            font-weight: 600;
-            padding: 4px 8px;
-            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            padding: 5px 12px;
+            border-radius: 12px;
+            display: inline-block;
+        }
+
+
+        .rules-card {
+            background-color: #fcf8fd;
+            border: 2px dashed #e2cfe6;
+            border-radius: 16px;
+            padding: 20px;
+        }
+
+
+        .admin-pill {
+            background-color: #f2e6f5;
+            color: #844896;
+            font-weight: 700;
+            padding: 6px 14px;
+            border-radius: 20px;
+            border: 1px solid #e1bee7;
+        }
+
+
+        .form-control-cute {
+            border-radius: 14px;
+            border: 2px solid #e2cfe6;
+            padding: 10px 15px;
+        }
+
+
+        .form-control-cute:focus {
+            border-color: #844896;
+            box-shadow: 0 0 0 0.25rem rgba(132, 72, 150, 0.18);
         }
     </style>
 </head>
 
+
 <body class="d-flex flex-column min-vh-100">
+
 
     <nav class="navbar navbar-expand-lg custom-navbar py-3 bg-dark">
         <div class="container d-flex justify-content-between align-items-center">
             <a href="home.html">
                 <img src="images/images/commvault-logo.png" alt="Commvault Logo" class="navbar-logo" style="max-height:40px;">
             </a>
+
 
             <div class="navbar-nav ms-auto flex-row align-items-center gap-3">
                 <a class="nav-link text-white-50" href="home.html">Home</a>
@@ -70,22 +174,25 @@
         </div>
     </nav>
 
+
     <div class="container py-5">
         <div class="planner-card">
             <div class="d-flex justify-content-between align-items-center mb-2">
-                <h1 class="planner-title mb-0">Weekly Menu Planner</h1>
-                <span class="badge bg-secondary" id="adminBadge">Admin Access</span>
+                <h1 class="planner-title mb-0"> Weekly Menu Planner</h1>
+                <span class="admin-pill" id="adminBadge"> Admin Access</span>
             </div>
             <p class="text-muted mb-4">Generate, review, and publish weekly lunch schedules for employees.</p>
 
+
             <div class="mb-4">
-                <label class="form-label fw-bold" for="weekStart">Week Starting Date</label>
-                <input type="date" id="weekStart" class="form-control" style="max-width: 300px;">
+                <label class="form-label fw-bold text-secondary" for="weekStart"> Week Starting Date</label>
+                <input type="date" id="weekStart" class="form-control form-control-cute" style="max-width: 300px;">
             </div>
 
-            <div class="alert alert-light border mb-4">
-                <strong>Planner Rules & Information</strong>
-                <ul class="mb-0 mt-2">
+
+            <div class="rules-card mb-4">
+                <strong class="text-dark"> Planner Rules & Information</strong>
+                <ul class="mb-0 mt-2 text-secondary">
                     <li>No duplicate cuisines in the same week</li>
                     <li>No duplicate restaurants in the same week</li>
                     <li>Friday includes both Breakfast & Lunch</li>
@@ -93,30 +200,37 @@
                 </ul>
             </div>
 
+
             <div class="d-flex gap-3 mb-4">
-                <button id="generateMenuBtn" class="btn generate-btn text-white px-4 py-2">
+                <button id="generateMenuBtn" class="btn btn-cute-primary px-4 py-2">
                     Generate Weekly Menu
                 </button>
-                <button id="regenerateBtn" class="btn btn-outline-secondary px-4 py-2">
-                    Regenerate
+                <button id="regenerateBtn" class="btn btn-cute-outline px-4 py-2">
+                     Regenerate
                 </button>
             </div>
 
-            <div id="plannerStatus" class="alert alert-success d-none mb-4"></div>
 
-            <hr class="my-4">
+            <div id="plannerStatus" class="alert alert-success d-none mb-4" style="border-radius: 14px;"></div>
+
+
+            <hr class="my-4" style="opacity: 0.1;">
+
 
             <div id="menuResults"></div>
 
+
             <div class="mt-4">
-                <button id="publishMenuBtn" class="btn btn-success px-4 py-2" disabled>
-                    Publish Menu
+                <button id="publishMenuBtn" class="btn btn-cute-success px-4 py-2" disabled>
+                     Publish Menu
                 </button>
             </div>
 
-            <hr class="my-5">
 
-            <h3 class="planner-title mb-3">Previous Menus</h3>
+            <hr class="my-5" style="opacity: 0.1;">
+
+
+            <h3 class="planner-title mb-3"> Previous Menus</h3>
             <div id="previousMenus">
                 <div class="day-card text-muted">
                     Previous published menus will appear here.
@@ -125,13 +239,16 @@
         </div>
     </div>
 
+
     <footer class="custom-footer py-4 text-center text-secondary bg-dark mt-auto">
         <div class="container">
             © 2026 Commvault Lunch Portal | Admin Menu Planner
         </div>
     </footer>
 
+
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
 
     <script>
         // Initialize Supabase Connection
@@ -139,28 +256,35 @@
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVkcXJheXdmc2Vta3VscmF1ZGJkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQxMzI2NjEsImV4cCI6MjA5OTcwODY2MX0.2VWPvdoJP-bYalmBa56wqqEWX8jPABNgFokYomQo2Rk';
         const db = supabase.createClient(supabaseUrl, supabaseKey);
 
+
         let generatedSchedule = [];
+
 
         // Admin Access Verification
         async function ensureAdminAccess(){
             try {
                 const response = await fetch("/api/auth/me", { credentials: "include" });
 
+
                 if(!response.ok){
                     window.location.href="login.html";
                     return false;
                 }
 
+
                 const user = await response.json();
+
 
                 if(user.role !== "admin"){
                     window.location.href="home.html";
                     return false;
                 }
 
+
                 if (user.username) {
                     document.getElementById("adminBadge").textContent = `Admin: ${user.username}`;
                 }
+
 
                 return true;
             } catch(error){
@@ -170,6 +294,7 @@
             }
         }
 
+
         // Menu Generation Logic
         async function generateMenu() {
             const statusBox = document.getElementById("plannerStatus");
@@ -177,9 +302,11 @@
             statusBox.classList.add("alert-success");
             statusBox.textContent = "Loading restaurants from Supabase...";
 
+
             const { data: restaurants, error } = await db
                 .from("resturants")
                 .select("*");
+
 
             if (error) {
                 console.error("Restaurant load error:", error);
@@ -189,10 +316,12 @@
                 return;
             }
 
+
             const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
             const selectedRestaurants = new Set();
             const selectedCuisines = new Set();
             generatedSchedule = [];
+
 
             function getAvailableRestaurant(serviceFilter = null) {
                 const shuffled = [...restaurants].sort(() => 0.5 - Math.random());
@@ -202,9 +331,11 @@
                     const notDuplicateRest = !selectedRestaurants.has(r.name);
                     const notDuplicateCuisine = !selectedCuisines.has(r.cuisine_type);
 
+
                     return isServiceMatch && notDuplicateRest && notDuplicateCuisine;
                 });
             }
+
 
             for (const day of days) {
                 if (day === "Friday") {
@@ -221,8 +352,8 @@
                     generatedSchedule.push({
                         day: day,
                         meals: [
-                            { type: "Breakfast", restaurant: bfast },
-                            { type: "Lunch", restaurant: lunch }
+                            { type: "Breakfast ", restaurant: bfast },
+                            { type: "Lunch ", restaurant: lunch }
                         ]
                     });
                 } else {
@@ -234,15 +365,17 @@
                     generatedSchedule.push({
                         day: day,
                         meals: [
-                            { type: "Lunch", restaurant: lunch }
+                            { type: "Lunch ", restaurant: lunch }
                         ]
                     });
                 }
             }
 
+
             statusBox.textContent = "Successfully generated weekly schedule!";
             const publishBtn = document.getElementById("publishMenuBtn");
             if (publishBtn) publishBtn.disabled = false;
+
 
             // Render Schedule to UI
             let html = "";
@@ -273,12 +406,15 @@
                 html += `</div>`;
             });
 
+
             document.getElementById("menuResults").innerHTML = html;
         }
+
 
         // Publish Schedule Logic
         async function publishMenu() {
             const statusBox = document.getElementById("plannerStatus");
+
 
             if (generatedSchedule.length === 0) {
                 statusBox.classList.remove("d-none", "alert-success");
@@ -286,6 +422,7 @@
                 statusBox.textContent = "Generate a menu first.";
                 return;
             }
+
 
             const weekStart = document.getElementById("weekStart").value;
             if (!weekStart) {
@@ -295,31 +432,36 @@
                 return;
             }
 
+
             const rows = [];
             generatedSchedule.forEach(day => {
                 day.meals.forEach(meal => {
                     if (meal.restaurant) {
+                        // Strips emojis so clean string values are inserted into the database
+                        const cleanMealType = meal.type.includes("Breakfast") ? "Breakfast" : "Lunch";
                         rows.push({
-    week_start_date: weekStart,
-    day_of_week: day.day,
-    meal_type: meal.type,
-    restaurant_name:
-        meal.restaurant.name,
-    is_approved: true
-});
+                            week_start_date: weekStart,
+                            day_of_week: day.day,
+                            meal_type: cleanMealType,
+                            restaurant_name: meal.restaurant.name,
+                            is_approved: true
+                        });
                     }
                 });
             });
 
+
             statusBox.classList.remove("d-none", "alert-danger");
             statusBox.classList.add("alert-success");
             statusBox.textContent = "Publishing menu to Supabase...";
+
 
             // Delete existing records to allow overwriting
             const { error: deleteError } = await db
                 .from("weekly_menus")
                 .delete()
                 .eq("week_start_date", weekStart);
+
 
             if (deleteError) {
                 console.error("Delete error:", deleteError);
@@ -329,10 +471,12 @@
                 return;
             }
 
+
             // Insert new schedule rows
             const { error: insertError } = await db
                 .from("weekly_menus")
                 .insert(rows);
+
 
             if (insertError) {
                 console.error("Publish error:", insertError);
@@ -342,8 +486,10 @@
                 return;
             }
 
+
             statusBox.textContent = "Menu published successfully!";
         }
+
 
         // Logout
         async function logout(){
@@ -355,6 +501,7 @@
             localStorage.clear();
             window.location.href="login.html";
         }
+
 
         // Event Attachments
         window.addEventListener("DOMContentLoaded", async () => {
@@ -368,4 +515,8 @@
     </script>
 </body>
 
+
 </html>
+
+
+

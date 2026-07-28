@@ -1079,3 +1079,36 @@ body{
 .form-check-label {
     cursor: pointer;
 }
+
+/* Card Enhancements */
+#menu-cards-container .card {
+    border: 1px solid rgba(0, 0, 0, 0.06);
+    border-radius: 14px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+#menu-cards-container .card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.08) !important;
+}
+
+/* Meal Type Badges */
+.badge-meal {
+    font-size: 0.75rem;
+    padding: 0.4em 0.8em;
+    border-radius: 20px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.badge-breakfast {
+    background-color: #e3f2fd;
+    color: #0d6efd;
+}
+
+.badge-lunch {
+    background-color: #e8f5e9;
+    color: #198754;
+}
+
+
