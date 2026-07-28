@@ -375,3 +375,46 @@ async function loadHomeTicker() {
         ticker.innerHTML = "<span>Unable to load weekly menu</span>";
     }
 }
+
+
+
+// Handle Updates Form Submission (home.html)
+const updatesForm = document.getElementById("updatesForm");
+
+if (updatesForm) {
+    updatesForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        const phoneInput = document.getElementById("subscriberPhone").value.trim();
+        const nameInput = document.getElementById("subscriberName").value.trim();
+
+        try {
+            // Sends the phone number to your SQLite server.js endpoint
+            const response = await fetch("/api/subscribe", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ phone: phoneInput })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                // Hide input modal
+                const updatesModal = bootstrap.Modal.getInstance(document.getElementById('updatesModal'));
+                if (updatesModal) updatesModal.hide();
+
+                // Show success modal
+                const successModal = new bootstrap.Modal(document.getElementById('subscribeSuccessModal'));
+                successModal.show();
+
+                updatesForm.reset();
+            } else {
+                alert(data.error || "Subscription failed. Please try again.");
+            }
+        } catch (err) {
+            console.error("Subscription error:", err);
+            alert("Network error submitting subscription.");
+        }
+    });
+}
+
