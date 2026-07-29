@@ -1,588 +1,671 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Commvault Lunch Portal | Admin Dashboard</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css">
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Commvault Lunch Portal | Admin Dashboard</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body class="bg-light">
-    <nav class="navbar navbar-expand-lg custom-navbar py-3 bg-dark">
-        <div class="container d-flex justify-content-between align-items-center">
-            <a href="home.html">
-                <img src="images/images/commvault-logo.png" alt="Commvault Logo" class="navbar-logo" style="max-height:40px;">
-            </a>
-            <div class="navbar-nav ms-auto flex-row align-items-center gap-3">
-                <a class="nav-link text-white-50" href="home.html">Home</a>
-                <a class="nav-link active-link text-white fw-bold" href="admin.html">Dashboard</a>
-                <button class="btn btn-outline-danger btn-sm ms-2" onclick="logout()">Logout</button>
+
+  <!-- NAVIGATION -->
+  <nav class="navbar navbar-expand-lg custom-navbar py-3 bg-dark">
+    <div class="container d-flex justify-content-between align-items-center">
+      <a href="home.html">
+        <img src="images/images/commvault-logo.png" alt="Commvault Logo" class="navbar-logo" style="max-height:40px;">
+      </a>
+      <div class="navbar-nav ms-auto flex-row align-items-center gap-3">
+        <a class="nav-link text-white-50" href="home.html">Home</a>
+        <a class="nav-link active-link text-white fw-bold" href="admin-new.html">Dashboard</a>
+        <button class="btn btn-outline-danger btn-sm ms-2" onclick="logout()">Logout</button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- DASHBOARD HEADER -->
+  <section class="py-4 bg-white border-bottom">
+    <div class="container d-flex justify-content-between align-items-center flex-wrap gap-3">
+      <div>
+        <h2 class="fw-bold mb-1">Admin Dashboard</h2>
+        <p class="text-secondary mb-0 small">
+          Manage employee lunch submissions, dynamic vendor orders, and contact feedback.
+        </p>
+      </div>
+      <div class="d-flex gap-2">
+        <!-- Send Update Trigger Modal Button -->
+        <button type="button" class="btn btn-primary shadow-sm" data-bs-toggle="modal" data-bs-target="#notificationModal" onclick="loadSubscriberCount()">
+          <i class="bi bi-bell me-1"></i> Send Update
+        </button>
+        <!-- Generate Menu Button -->
+        <a href="menu-planner.html" class="btn btn-success shadow-sm">
+          Generate Weekly Menu
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- METRICS SECTION -->
+  <section class="pt-4 pb-3">
+    <div class="container">
+      <div class="row g-3">
+        <div class="col-6 col-md-3">
+          <div class="card shadow-sm border-0">
+            <div class="card-body text-center py-3">
+              <h6 class="text-secondary small mb-1">Total Orders</h6>
+              <h3 id="metricTotal" class="fw-bold text-primary mb-0">0</h3>
             </div>
+          </div>
         </div>
-    </nav>
-
-
-    <section class="py-4 bg-white border-bottom">
-        <div class="container d-flex justify-content-between align-items-center">
-            <div>
-                <h2 class="fw-bold mb-1">Admin Dashboard</h2>
-                <p class="text-secondary mb-0 small">
-                    Manage employee lunch submissions, dynamic vendor orders, and contact feedback.
-                </p>
+        <div class="col-6 col-md-3">
+          <div class="card shadow-sm border-0">
+            <div class="card-body text-center py-3">
+              <h6 class="text-secondary small mb-1">Vegetarian</h6>
+              <h3 id="metricVeg" class="fw-bold text-success mb-0">0</h3>
             </div>
-            <a href="menu-planner.html" class="btn btn-success shadow-sm">
-                Generate Weekly Menu
-            </a>
+          </div>
         </div>
-    </section>
-
-
-    <section class="pt-4 pb-3">
-        <div class="container">
-            <div class="row g-3">
-                <div class="col-6 col-md-3">
-                    <div class="card shadow-sm border-0">
-                        <div class="card-body text-center py-3">
-                            <h6 class="text-secondary small mb-1">Total Orders</h6>
-                            <h3 id="metricTotal" class="fw-bold text-primary mb-0">0</h3>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-6 col-md-3">
-                    <div class="card shadow-sm border-0">
-                        <div class="card-body text-center py-3">
-                            <h6 class="text-secondary small mb-1">Vegetarian</h6>
-                            <h3 id="metricVeg" class="fw-bold text-success mb-0">0</h3>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-6 col-md-3">
-                    <div class="card shadow-sm border-0">
-                        <div class="card-body text-center py-3">
-                            <h6 class="text-secondary small mb-1">Non-Vegetarian</h6>
-                            <h3 id="metricNonVeg" class="fw-bold text-danger mb-0">0</h3>
-                        </div>
-                    </div>
-                </div>
-                <div class="col-6 col-md-3">
-                    <div class="card shadow-sm border-0">
-                        <div class="card-body text-center py-3">
-                            <h6 class="text-secondary small mb-1">Mixed Preference</h6>
-                            <h3 id="metricBoth" class="fw-bold text-warning mb-0">0</h3>
-                        </div>
-                    </div>
-                </div>
+        <div class="col-6 col-md-3">
+          <div class="card shadow-sm border-0">
+            <div class="card-body text-center py-3">
+              <h6 class="text-secondary small mb-1">Non-Vegetarian</h6>
+              <h3 id="metricNonVeg" class="fw-bold text-danger mb-0">0</h3>
             </div>
+          </div>
         </div>
-    </section>
-
-
-    <section class="pb-5">
-        <div class="container">
-            <ul class="nav nav-pills nav-fill bg-white p-2 rounded shadow-sm mb-4" id="dashboardTabs" role="tablist">
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link active fw-semibold" id="live-orders-tab" data-bs-toggle="tab" data-bs-target="#live-orders" type="button" role="tab">
-                         Live Employee Orders
-                    </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link fw-semibold" id="vendor-tab" data-bs-toggle="tab" data-bs-target="#vendor-summary" type="button" role="tab">
-                        Vendor Orders & Smart Calculator
-                    </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link fw-semibold" id="messages-tab" data-bs-toggle="tab" data-bs-target="#messages" type="button" role="tab">
-                         Contact Messages
-                    </button>
-                </li>
-            </ul>
-
-
-            <div class="tab-content" id="dashboardTabsContent">
-                
-                <div class="tab-pane fade show active" id="live-orders" role="tabpanel">
-                    <div class="card shadow-sm border-0">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-center mb-3">
-                                <h5 class="fw-bold mb-0">Employee Lunch Submissions</h5>
-                                <small class="text-muted">Last Updated: <span id="lastUpdated">Never</span></small>
-                            </div>
-                            <div class="mb-3">
-                                <input id="searchInput" class="form-control" type="text" placeholder="Search employee name...">
-                            </div>
-                            <div class="table-responsive">
-                                <table class="table table-striped align-middle">
-                                    <thead>
-                                        <tr>
-                                            <th>Employee</th>
-                                            <th>Monday</th>
-                                            <th>Tuesday</th>
-                                            <th>Wednesday</th>
-                                            <th>Thursday</th>
-                                            <th>Bagels</th>
-                                            <th>Bubbakoos</th>
-                                            <th>Ice Cream</th>
-                                            <th>Status</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="liveOrdersTableBody">
-                                        <tr>
-                                            <td colspan="9" class="text-center py-4 text-muted">Loading employee orders...</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="tab-pane fade" id="vendor-summary" role="tabpanel">
-                    
-                    <div class="card shadow-sm border-0 mb-4">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-center mb-3">
-                                <h5 class="fw-bold mb-0">Weekly Vendor Item Breakdown</h5>
-                                <span class="badge bg-info text-dark">Auto-Calculated</span>
-                            </div>
-
-
-                            <div class="row g-3 mb-4">
-                                <div class="col-md-6">
-                                    <div class="p-3 border rounded bg-light text-center">
-                                        <h6 class="text-muted mb-1">Participating Employees</h6>
-                                        <h3 id="summaryEmployees" class="fw-bold text-success mb-0">0</h3>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <div class="p-3 border rounded bg-light text-center">
-                                        <h6 class="text-muted mb-1">Missing / No Order</h6>
-                                        <h3 id="summaryMissing" class="fw-bold text-secondary mb-0">0</h3>
-                                    </div>
-                                </div>
-                            </div>
-
-
-                            <div id="dynamicVendorSummaryContainer" class="row g-3">
-                                <div class="col-12 text-center text-muted py-3">
-                                    Calculating dynamic weekly order counts...
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-
-                    <div class="card shadow-sm border-0 border-start border-4 border-success">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-center mb-3">
-                                <div>
-                                    <h5 class="fw-bold mb-1"> Smart Vendor Order Recommendations</h5>
-                                    <p class="text-muted mb-0 small">Calculated bulk units (Pies, Dozens, Catering Trays) ready to copy and send.</p>
-                                </div>
-                                <button class="btn btn-sm btn-outline-primary" onclick="copyRecommendationsToClipboard()"> Copy Summary Email</button>
-                            </div>
-
-
-                            <div id="recommendationsContainer" class="row g-3">
-                                <div class="col-12 text-center text-muted py-3">
-                                    Waiting for order calculations...
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-
-                <div class="tab-pane fade" id="messages" role="tabpanel">
-                    <div class="card shadow-sm border-0">
-                        <div class="card-body">
-                            <h5 class="fw-bold mb-3">Submitted Contact Messages</h5>
-                            <div class="table-responsive">
-                                <table class="table table-bordered align-middle">
-                                    <thead class="table-light">
-                                        <tr>
-                                            <th>Name</th>
-                                            <th>Email</th>
-                                            <th>Message</th>
-                                            <th>Status</th>
-                                            <th>Submitted At</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="contactMessagesTableBody">
-                                        <tr>
-                                            <td colspan="5" class="text-center py-4 text-muted">Loading contact messages...</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-
+        <div class="col-6 col-md-3">
+          <div class="card shadow-sm border-0">
+            <div class="card-body text-center py-3">
+              <h6 class="text-secondary small mb-1">Mixed Preference</h6>
+              <h3 id="metricBoth" class="fw-bold text-warning mb-0">0</h3>
             </div>
+          </div>
         </div>
-    </section>
+      </div>
+    </div>
+  </section>
 
+  <!-- MAIN DASHBOARD TABS -->
+  <section class="pb-5">
+    <div class="container">
+      <ul class="nav nav-pills nav-fill bg-white p-2 rounded shadow-sm mb-4" id="dashboardTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+          <button class="nav-link active fw-semibold" id="live-orders-tab" data-bs-toggle="tab" data-bs-target="#live-orders" type="button" role="tab">
+            Live Employee Orders
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link fw-semibold" id="vendor-tab" data-bs-toggle="tab" data-bs-target="#vendor-summary" type="button" role="tab">
+            Vendor Orders & Smart Calculator
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link fw-semibold" id="messages-tab" data-bs-toggle="tab" data-bs-target="#messages" type="button" role="tab">
+            Contact Messages
+          </button>
+        </li>
+        <li class="nav-item" role="presentation">
+          <button class="nav-link fw-semibold" id="subscribers-tab" data-bs-toggle="tab" data-bs-target="#subscribers" type="button" role="tab">
+            Subscribers List
+          </button>
+        </li>
+      </ul>
 
-    <footer class="custom-footer py-4 text-center text-secondary bg-dark mt-auto">
-        <div class="container small">
-            © 2026 Commvault Lunch Portal | Admin Dashboard
+      <div class="tab-content" id="dashboardTabsContent">
+        <!-- LIVE ORDERS TAB -->
+        <div class="tab-pane fade show active" id="live-orders" role="tabpanel">
+          <div class="card shadow-sm border-0">
+            <div class="card-body">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="fw-bold mb-0">Employee Lunch Submissions</h5>
+                <small class="text-muted">Last Updated: <span id="lastUpdated">Never</span></small>
+              </div>
+              <div class="mb-3">
+                <input id="searchInput" class="form-control" type="text" placeholder="Search employee name...">
+              </div>
+              <div class="table-responsive">
+                <table class="table table-striped align-middle">
+                  <thead>
+                    <tr>
+                      <th>Employee</th>
+                      <th>Monday</th>
+                      <th>Tuesday</th>
+                      <th>Wednesday</th>
+                      <th>Thursday</th>
+                      <th>Bagels</th>
+                      <th>Bubbakoos</th>
+                      <th>Ice Cream</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody id="liveOrdersTableBody">
+                    <tr>
+                      <td colspan="9" class="text-center py-4 text-muted">Loading employee orders...</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
         </div>
-    </footer>
 
+        <!-- VENDOR SUMMARY TAB -->
+        <div class="tab-pane fade" id="vendor-summary" role="tabpanel">
+          <div class="card shadow-sm border-0 mb-4">
+            <div class="card-body">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="fw-bold mb-0">Weekly Vendor Item Breakdown</h5>
+                <span class="badge bg-info text-dark">Auto-Calculated</span>
+              </div>
+              <div class="row g-3 mb-4">
+                <div class="col-md-6">
+                  <div class="p-3 border rounded bg-light text-center">
+                    <h6 class="text-muted mb-1">Participating Employees</h6>
+                    <h3 id="summaryEmployees" class="fw-bold text-success mb-0">0</h3>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="p-3 border rounded bg-light text-center">
+                    <h6 class="text-muted mb-1">Missing / No Order</h6>
+                    <h3 id="summaryMissing" class="fw-bold text-secondary mb-0">0</h3>
+                  </div>
+                </div>
+              </div>
+              <div id="dynamicVendorSummaryContainer" class="row g-3">
+                <div class="col-12 text-center text-muted py-3">
+                  Calculating dynamic weekly order counts...
+                </div>
+              </div>
+            </div>
+          </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+          <div class="card shadow-sm border-0 border-start border-4 border-success">
+            <div class="card-body">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <div>
+                  <h5 class="fw-bold mb-1">Smart Vendor Order Recommendations</h5>
+                  <p class="text-muted mb-0 small">Calculated bulk units (Pies, Dozens, Catering Trays) ready to copy and send.</p>
+                </div>
+                <button class="btn btn-sm btn-outline-primary" onclick="copyRecommendationsToClipboard()">
+                  Copy Summary Email
+                </button>
+              </div>
+              <div id="recommendationsContainer" class="row g-3">
+                <div class="col-12 text-center text-muted py-3">
+                  Waiting for order calculations...
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
 
+        <!-- CONTACT MESSAGES TAB -->
+        <div class="tab-pane fade" id="messages" role="tabpanel">
+          <div class="card shadow-sm border-0">
+            <div class="card-body">
+              <h5 class="fw-bold mb-3">Submitted Contact Messages</h5>
+              <div class="table-responsive">
+                <table class="table table-bordered align-middle">
+                  <thead class="table-light">
+                    <tr>
+                      <th>Name</th>
+                      <th>Email</th>
+                      <th>Message</th>
+                      <th>Status</th>
+                      <th>Submitted At</th>
+                    </tr>
+                  </thead>
+                  <tbody id="contactMessagesTableBody">
+                    <tr>
+                      <td colspan="5" class="text-center py-4 text-muted">Loading contact messages...</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
 
-    <script>
-        // ==========================================
-        // COMMVAULT ADMIN DASHBOARD INLINE SCRIPT
-        // ==========================================
-        const supabaseUrl = 'https://udqraywfsemkulraudbd.supabase.co';
-        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVkcXJheXdmc2Vta3VscmF1ZGJkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQxMzI2NjEsImV4cCI6MjA5OTcwODY2MX0.2VWPvdoJP-bYalmBa56wqqEWX8jPABNgFokYomQo2Rk';
-        const db = supabase.createClient(supabaseUrl, supabaseKey);
+        <!-- SUBSCRIBERS TAB -->
+        <div class="tab-pane fade" id="subscribers" role="tabpanel">
+          <div class="card shadow-sm border-0">
+            <div class="card-body">
+              <h5 class="fw-bold mb-3">Notification Subscribers</h5>
+              <div class="table-responsive">
+                <table class="table table-striped align-middle">
+                  <thead>
+                    <tr>
+                      <th>ID</th>
+                      <th>Phone Number</th>
+                      <th>Subscribed Date</th>
+                    </tr>
+                  </thead>
+                  <tbody id="subscriberTable">
+                    <tr>
+                      <td colspan="3" class="text-center py-4 text-muted">Loading subscribers...</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
 
+  <!-- SEND NOTIFICATION MODAL -->
+  <div class="modal fade" id="notificationModal" tabindex="-1" aria-labelledby="notificationModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title fw-bold" id="notificationModalLabel">Send Lunch Update</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="alert alert-info py-2 d-flex justify-content-between align-items-center mb-3">
+            <span class="small fw-semibold">Active SMS Subscribers:</span>
+            <span class="badge bg-primary fs-6" id="modalSubscriberCount">0</span>
+          </div>
+          <div class="mb-3">
+            <label for="notificationMessage" class="form-label fw-bold">Message Content</label>
+            <textarea id="notificationMessage" class="form-control" rows="4" placeholder="Type your lunch announcement or update here..."></textarea>
+          </div>
+          <div id="modalAlert" class="alert d-none small mb-0 py-2"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" id="sendNotificationBtn" class="btn btn-primary" onclick="sendNotification()">
+            Send Notification
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
 
-        const CONVERSION_RULES = {
-            pizzaSlicesPerPie: 8,
-            slicesPerPerson: 2,
-            bagelsPerDozen: 13,
-            creamCheeseTubsPerDozen: 2,
-            fullTrayServings: 16,
-            halfTrayServings: 8
-        };
+  <footer class="custom-footer py-4 text-center text-secondary bg-dark mt-auto">
+    <div class="container small">
+      © 2026 Commvault Lunch Portal | Admin Dashboard
+    </div>
+  </footer>
 
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+  <script>
+    const supabaseUrl = 'https://udqraywfsemkulraudbd.supabase.co';
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVkcXJheXdmc2Vta3VscmF1ZGJkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQxMzI2NjEsImV4cCI6MjA5OTcwODY2MX0.2VWPvdoJP-bYalmBa56wqqEWX8jPABNgFokYomQo2Rk';
+    const db = supabase.createClient(supabaseUrl, supabaseKey);
 
-        async function ensureAdminAccess() {
-            try {
-                const response = await fetch("/api/auth/me", { credentials: "include" });
-                if (!response.ok) {
-                    window.location.href = "login.html";
-                    return false;
-                }
-                const user = await response.json();
-                if (user.role !== "admin") {
-                    window.location.href = "home.html";
-                    return false;
-                }
-                return true;
-            } catch (error) {
-                console.error("Authentication Error:", error);
-                window.location.href = "login.html";
-                return false;
-            }
+    const CONVERSION_RULES = {
+      pizzaSlicesPerPie: 8,
+      slicesPerPerson: 2,
+      bagelsPerDozen: 13,
+      creamCheeseTubsPerDozen: 2,
+      fullTrayServings: 16,
+      halfTrayServings: 8
+    };
+
+    async function ensureAdminAccess() {
+      try {
+        const response = await fetch("/api/auth/me", { credentials: "include" });
+        if (!response.ok) {
+          window.location.href = "login.html";
+          return false;
         }
-
-
-        function pickValue(order, keys, fallback = "None") {
-            for (const key of keys) {
-                const value = order[key];
-                if (value === undefined || value === null) continue;
-                if (typeof value === "string" && value.trim() !== "") return value.trim();
-                if (Array.isArray(value) && value.length > 0) return value.join(", ");
-            }
-            return fallback;
+        const user = await response.json();
+        if (user.role !== "admin") {
+          window.location.href = "home.html";
+          return false;
         }
-
-
-        function mealBadge(type) {
-            const meal = (type || "").toLowerCase();
-            if (meal.includes("veg") && !meal.includes("non")) {
-                return '<span class="badge bg-success">Vegetarian</span>';
-            }
-            if (meal.includes("non")) {
-                return '<span class="badge bg-danger">Non-Veg</span>';
-            }
-            if (meal.includes("both")) {
-                return '<span class="badge bg-warning text-dark">Both</span>';
-            }
-            return '<span class="badge bg-secondary">None</span>';
-        }
-
-
-        function renderDynamicVendorSummary(orders) {
-            const container = document.getElementById("dynamicVendorSummaryContainer");
-            const categories = ["monday", "tuesday", "wednesday", "thursday", "bagels", "bubbakoos", "icecream"];
-            
-            let totalParticipating = 0;
-            let totalMissing = 0;
-
-
-            const summaryMap = {};
-            categories.forEach(cat => summaryMap[cat] = {});
-
-
-            orders.forEach(order => {
-                let orderHasSelections = false;
-
-
-                categories.forEach(cat => {
-                    const rawVal = order[cat];
-                    if (rawVal && String(rawVal).trim() !== "" && String(rawVal).toLowerCase() !== "none") {
-                        orderHasSelections = true;
-                        const itemStr = String(rawVal).trim();
-                        summaryMap[cat][itemStr] = (summaryMap[cat][itemStr] || 0) + 1;
-                    }
-                });
-
-
-                if (orderHasSelections) {
-                    totalParticipating++;
-                } else {
-                    totalMissing++;
-                }
-            });
-
-
-            document.getElementById("summaryEmployees").textContent = totalParticipating;
-            document.getElementById("summaryMissing").textContent = totalMissing;
-
-
-            container.innerHTML = "";
-
-
-            categories.forEach(cat => {
-                const options = summaryMap[cat];
-                const optionKeys = Object.keys(options);
-                const catTitle = cat.charAt(0).toUpperCase() + cat.slice(1);
-
-
-                let cardBodyHtml = '';
-                if (optionKeys.length === 0) {
-                    cardBodyHtml = `<p class="text-muted mb-0 small">No orders submitted</p>`;
-                } else {
-                    cardBodyHtml = optionKeys.map(optKey => `
-                        <div class="d-flex justify-content-between align-items-center mb-1">
-                            <span class="text-truncate me-2 small" title="${optKey}">${optKey}</span>
-                            <span class="badge bg-primary rounded-pill">${options[optKey]}</span>
-                        </div>
-                    `).join('');
-                }
-
-
-                const colHtml = `
-                    <div class="col-md-4 col-lg-3">
-                        <div class="p-3 border rounded bg-light h-100 shadow-sm">
-                            <h6 class="fw-bold text-dark border-bottom pb-2 mb-2">${catTitle}</h6>
-                            ${cardBodyHtml}
-                        </div>
-                    </div>
-                `;
-
-
-                container.insertAdjacentHTML('beforeend', colHtml);
-            });
-
-
-            renderRecommendations(summaryMap);
-        }
-
-
-        function renderRecommendations(summaryMap) {
-            const recContainer = document.getElementById("recommendationsContainer");
-            recContainer.innerHTML = "";
-
-
-            const categories = Object.keys(summaryMap);
-
-
-            categories.forEach(cat => {
-                const options = summaryMap[cat];
-                const keys = Object.keys(options);
-                if (keys.length === 0) return;
-
-
-                let totalCategoryCount = keys.reduce((sum, k) => sum + options[k], 0);
-                const catTitle = cat.charAt(0).toUpperCase() + cat.slice(1);
-                let recLines = [];
-
-
-                if (cat === "bagels") {
-                    const dozens = Math.ceil(totalCategoryCount / CONVERSION_RULES.bagelsPerDozen);
-                    const ccTubs = dozens * CONVERSION_RULES.creamCheeseTubsPerDozen;
-                    recLines.push(`Order <strong>${dozens} Dozen</strong> Bagels (${totalCategoryCount} total requested)`);
-                    recLines.push(`Include <strong>${ccTubs} Tubs</strong> Cream Cheese`);
-                } 
-                else if (keys.some(k => k.toLowerCase().includes("pizza"))) {
-                    const slicesNeeded = totalCategoryCount * CONVERSION_RULES.slicesPerPerson;
-                    const piesNeeded = Math.ceil(slicesNeeded / CONVERSION_RULES.pizzaSlicesPerPie);
-                    recLines.push(`Order approx. <strong>${piesNeeded} Whole Pizzas</strong> (${totalCategoryCount} eaters / ${slicesNeeded} slices)`);
-                } 
-                else if (cat === "bubbakoos" || cat === "icecream") {
-                    recLines.push(`Order <strong>${totalCategoryCount} Individual Portions</strong>`);
-                } 
-                else {
-                    const fullTrays = Math.floor(totalCategoryCount / CONVERSION_RULES.fullTrayServings);
-                    const remainder = totalCategoryCount % CONVERSION_RULES.fullTrayServings;
-                    let halfTrays = remainder > 0 ? 1 : 0;
-
-
-                    let trayStr = [];
-                    if (fullTrays > 0) trayStr.push(`${fullTrays} Full Tray(s)`);
-                    if (halfTrays > 0) trayStr.push(`${halfTrays} Half Tray(s)`);
-                    
-                    recLines.push(`Recommended Catering: <strong>${trayStr.join(" + ") || "1 Half Tray"}</strong> (${totalCategoryCount} portions)`);
-                }
-
-
-                const cardHtml = `
-                    <div class="col-md-6 col-lg-4">
-                        <div class="p-3 border rounded bg-white shadow-sm h-100">
-                            <h6 class="fw-bold text-success border-bottom pb-2 mb-2">📌 ${catTitle} Recommendation</h6>
-                            <ul class="list-unstyled mb-0 small">
-                                ${recLines.map(line => `<li class="mb-1">▪ ${line}</li>`).join('')}
-                            </ul>
-                        </div>
-                    </div>
-                `;
-                recContainer.insertAdjacentHTML("beforeend", cardHtml);
-            });
-
-
-            if (recContainer.children.length === 0) {
-                recContainer.innerHTML = `<div class="col-12 text-muted text-center">No active orders available to generate recommendations.</div>`;
-            }
-        }
-
-
-        function copyRecommendationsToClipboard() {
-            const cards = document.querySelectorAll("#recommendationsContainer .card");
-            let text = "Commvault Weekly Vendor Purchase Summary:\n\n";
-
-
-            cards.forEach(card => {
-                const title = card.querySelector("h6").innerText.replace("📌 ", "");
-                const items = Array.from(card.querySelectorAll("li")).map(li => li.innerText.replace("▪ ", "- "));
-                text += `${title}:\n${items.join("\n")}\n\n`;
-            });
-
-
-            navigator.clipboard.writeText(text).then(() => {
-                alert("Vendor purchase summary copied to clipboard!");
-            }).catch(err => {
-                console.error("Could not copy text: ", err);
-            });
-        }
-
-
-        async function fetchLiveDashboardData() {
-            const tableBody = document.getElementById("liveOrdersTableBody");
-            try {
-                const { data: orders, error: ordersError } = await db.from('lunch_orders').select('*');
-                if (ordersError) throw ordersError;
-
-
-                let vegCount = 0, nonVegCount = 0, bothCount = 0;
-                orders.forEach(order => {
-                    const status = (order.thursday || "").toLowerCase();
-                    if (status.includes("veg") && !status.includes("non")) vegCount++;
-                    else if (status.includes("non")) nonVegCount++;
-                    else if (status.includes("both")) bothCount++;
-                });
-
-
-                document.getElementById("metricTotal").textContent = orders.length;
-                document.getElementById("metricVeg").textContent = vegCount;
-                document.getElementById("metricNonVeg").textContent = nonVegCount;
-                document.getElementById("metricBoth").textContent = bothCount;
-
-
-                renderDynamicVendorSummary(orders);
-
-
-                orders.sort((a, b) => (a.username || "").localeCompare(b.username || ""));
-                const search = document.getElementById("searchInput").value.toLowerCase().trim();
-                const filtered = orders.filter(order => (order.username || "").toLowerCase().includes(search));
-
-
-                tableBody.innerHTML = "";
-                if (filtered.length === 0) {
-                    tableBody.innerHTML = `<tr><td colspan="9" class="text-center py-4 text-muted">No orders found matching search criteria.</td></tr>`;
-                } else {
-                    filtered.forEach(order => {
-                        const row = document.createElement("tr");
-                        row.innerHTML = `
-                            <td class="fw-semibold">${pickValue(order, ["username"])}</td>
-                            <td>${pickValue(order, ["monday"])}</td>
-                            <td>${pickValue(order, ["tuesday"])}</td>
-                            <td>${pickValue(order, ["wednesday"])}</td>
-                            <td>${pickValue(order, ["thursday"])}</td>
-                            <td>${pickValue(order, ["bagels"])}</td>
-                            <td>${pickValue(order, ["bubbakoos"])}</td>
-                            <td>${pickValue(order, ["icecream"])}</td>
-                            <td>${mealBadge(pickValue(order, ["thursday"]))}</td>
-                        `;
-                        tableBody.appendChild(row);
-                    });
-                }
-                document.getElementById("lastUpdated").textContent = new Date().toLocaleTimeString();
-            } catch (error) {
-                console.error("Dashboard Orders Error:", error);
-                tableBody.innerHTML = `<tr><td colspan="9" class="text-center text-danger">Failed to load orders. Check Supabase connection.</td></tr>`;
-            }
-        }
-
-
-        async function fetchContactMessages() {
-            const tableBody = document.getElementById("contactMessagesTableBody");
-            try {
-                const { data: messages, error } = await db.from("contact_messages").select("*").order("created_at", { ascending: false });
-                if (error) throw error;
-
-
-                tableBody.innerHTML = "";
-                if (!messages || messages.length === 0) {
-                    tableBody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-muted">No contact messages received yet.</td></tr>`;
-                    return;
-                }
-
-
-                messages.forEach(msg => {
-                    const row = document.createElement("tr");
-                    const createdDate = msg.created_at ? new Date(msg.created_at).toLocaleString() : "N/A";
-                    row.innerHTML = `
-                        <td class="fw-semibold">${msg.name || "N/A"}</td>
-                        <td>${msg.email || "N/A"}</td>
-                        <td>${msg.message || "N/A"}</td>
-                        <td><span class="badge bg-warning text-dark">${msg.status || "Pending"}</span></td>
-                        <td><small class="text-muted">${createdDate}</small></td>
-                    `;
-                    tableBody.appendChild(row);
-                });
-            } catch (error) {
-                console.error("Fetch Messages Error:", error);
-                tableBody.innerHTML = `<tr><td colspan="5" class="text-center text-danger">Failed to load contact messages.</td></tr>`;
-            }
-        }
-
-
-        async function logout() {
-            try {
-                await fetch("/logout", { method: "POST", credentials: "include" });
-            } catch (error) {
-                console.error(error);
-            }
-            localStorage.clear();
-            window.location.href = "login.html";
-        }
-
-
-        window.addEventListener("DOMContentLoaded", async () => {
-            const searchInput = document.getElementById("searchInput");
-            if (searchInput) {
-                searchInput.addEventListener("input", fetchLiveDashboardData);
-            }
-            const allowed = await ensureAdminAccess();
-            if (allowed) {
-                fetchLiveDashboardData();
-                fetchContactMessages();
-            }
+        return true;
+      } catch (error) {
+        console.error("Authentication Error:", error);
+        window.location.href = "login.html";
+        return false;
+      }
+    }
+
+    function pickValue(order, keys, fallback = "None") {
+      for (const key of keys) {
+        const value = order[key];
+        if (value === undefined || value === null) continue;
+        if (typeof value === "string" && value.trim() !== "") return value.trim();
+        if (Array.isArray(value) && value.length > 0) return value.join(", ");
+      }
+      return fallback;
+    }
+
+    function mealBadge(type) {
+      const meal = (type || "").toLowerCase();
+      if (meal.includes("veg") && !meal.includes("non")) {
+        return '<span class="badge bg-success">Vegetarian</span>';
+      }
+      if (meal.includes("non")) {
+        return '<span class="badge bg-danger">Non-Veg</span>';
+      }
+      if (meal.includes("both")) {
+        return '<span class="badge bg-warning text-dark">Both</span>';
+      }
+      return '<span class="badge bg-secondary">None</span>';
+    }
+
+    function renderDynamicVendorSummary(orders) {
+      const container = document.getElementById("dynamicVendorSummaryContainer");
+      const categories = ["monday", "tuesday", "wednesday", "thursday", "bagels", "bubbakoos", "icecream"];
+      let totalParticipating = 0;
+      let totalMissing = 0;
+      const summaryMap = {};
+      categories.forEach(cat => summaryMap[cat] = {});
+
+      orders.forEach(order => {
+        let orderHasSelections = false;
+        categories.forEach(cat => {
+          const rawVal = order[cat];
+          if (rawVal && String(rawVal).trim() !== "" && String(rawVal).toLowerCase() !== "none") {
+            orderHasSelections = true;
+            const itemStr = String(rawVal).trim();
+            summaryMap[cat][itemStr] = (summaryMap[cat][itemStr] || 0) + 1;
+          }
         });
-    </script>
+        if (orderHasSelections) {
+          totalParticipating++;
+        } else {
+          totalMissing++;
+        }
+      });
+
+      document.getElementById("summaryEmployees").textContent = totalParticipating;
+      document.getElementById("summaryMissing").textContent = totalMissing;
+      container.innerHTML = "";
+
+      categories.forEach(cat => {
+        const options = summaryMap[cat];
+        const optionKeys = Object.keys(options);
+        const catTitle = cat.charAt(0).toUpperCase() + cat.slice(1);
+
+        let cardBodyHtml = '';
+        if (optionKeys.length === 0) {
+          cardBodyHtml = `<p class="text-muted mb-0 small">No orders submitted</p>`;
+        } else {
+          cardBodyHtml = optionKeys.map(optKey => `
+            <div class="d-flex justify-content-between align-items-center mb-1">
+              <span class="text-truncate me-2 small" title="${optKey}">${optKey}</span>
+              <span class="badge bg-primary rounded-pill">${options[optKey]}</span>
+            </div>
+          `).join('');
+        }
+
+        const colHtml = `
+          <div class="col-md-4 col-lg-3">
+            <div class="p-3 border rounded bg-light h-100 shadow-sm">
+              <h6 class="fw-bold text-dark border-bottom pb-2 mb-2">${catTitle}</h6>
+              ${cardBodyHtml}
+            </div>
+          </div>
+        `;
+        container.insertAdjacentHTML('beforeend', colHtml);
+      });
+
+      renderRecommendations(summaryMap);
+    }
+
+    function renderRecommendations(summaryMap) {
+      const recContainer = document.getElementById("recommendationsContainer");
+      recContainer.innerHTML = "";
+      const categories = Object.keys(summaryMap);
+
+      categories.forEach(cat => {
+        const options = summaryMap[cat];
+        const keys = Object.keys(options);
+        if (keys.length === 0) return;
+        let totalCategoryCount = keys.reduce((sum, k) => sum + options[k], 0);
+        const catTitle = cat.charAt(0).toUpperCase() + cat.slice(1);
+        let recLines = [];
+
+        if (cat === "bagels") {
+          const dozens = Math.ceil(totalCategoryCount / CONVERSION_RULES.bagelsPerDozen);
+          const ccTubs = dozens * CONVERSION_RULES.creamCheeseTubsPerDozen;
+          recLines.push(`Order <strong>${dozens} Dozen</strong> Bagels (${totalCategoryCount} total requested)`);
+          recLines.push(`Include <strong>${ccTubs} Tubs</strong> Cream Cheese`);
+        } else if (keys.some(k => k.toLowerCase().includes("pizza"))) {
+          const slicesNeeded = totalCategoryCount * CONVERSION_RULES.slicesPerPerson;
+          const piesNeeded = Math.ceil(slicesNeeded / CONVERSION_RULES.pizzaSlicesPerPie);
+          recLines.push(`Order approx. <strong>${piesNeeded} Whole Pizzas</strong> (${totalCategoryCount} eaters / ${slicesNeeded} slices)`);
+        } else if (cat === "bubbakoos" || cat === "icecream") {
+          recLines.push(`Order <strong>${totalCategoryCount} Individual Portions</strong>`);
+        } else {
+          const fullTrays = Math.floor(totalCategoryCount / CONVERSION_RULES.fullTrayServings);
+          const remainder = totalCategoryCount % CONVERSION_RULES.fullTrayServings;
+          let halfTrays = remainder > 0 ? 1 : 0;
+          let trayStr = [];
+          if (fullTrays > 0) trayStr.push(`${fullTrays} Full Tray(s)`);
+          if (halfTrays > 0) trayStr.push(`${halfTrays} Half Tray(s)`);
+          recLines.push(`Recommended Catering: <strong>${trayStr.join(" + ") || "1 Half Tray"}</strong> (${totalCategoryCount} portions)`);
+        }
+
+        const cardHtml = `
+          <div class="col-md-6 col-lg-4">
+            <div class="p-3 border rounded bg-white shadow-sm h-100">
+              <h6 class="fw-bold text-success border-bottom pb-2 mb-2">📌 ${catTitle} Recommendation</h6>
+              <ul class="list-unstyled mb-0 small">
+                ${recLines.map(line => `<li class="mb-1">▪ ${line}</li>`).join('')}
+              </ul>
+            </div>
+          </div>
+        `;
+        recContainer.insertAdjacentHTML("beforeend", cardHtml);
+      });
+
+      if (recContainer.children.length === 0) {
+        recContainer.innerHTML = `<div class="col-12 text-muted text-center">No active orders available to generate recommendations.</div>`;
+      }
+    }
+
+    function copyRecommendationsToClipboard() {
+      const cards = document.querySelectorAll("#recommendationsContainer .card");
+      let text = "Commvault Weekly Vendor Purchase Summary:\n\n";
+      cards.forEach(card => {
+        const title = card.querySelector("h6").innerText.replace("📌 ", "");
+        const items = Array.from(card.querySelectorAll("li")).map(li => li.innerText.replace("▪ ", "- "));
+        text += `${title}:\n${items.join("\n")}\n\n`;
+      });
+      navigator.clipboard.writeText(text).then(() => {
+        alert("Vendor purchase summary copied to clipboard!");
+      }).catch(err => {
+        console.error("Could not copy text: ", err);
+      });
+    }
+
+    async function fetchLiveDashboardData() {
+      const tableBody = document.getElementById("liveOrdersTableBody");
+      try {
+        const { data: orders, error: ordersError } = await db.from('lunch_orders').select('*');
+        if (ordersError) throw ordersError;
+
+        let vegCount = 0, nonVegCount = 0, bothCount = 0;
+        orders.forEach(order => {
+          const status = (order.thursday || "").toLowerCase();
+          if (status.includes("veg") && !status.includes("non")) vegCount++;
+          else if (status.includes("non")) nonVegCount++;
+          else if (status.includes("both")) bothCount++;
+        });
+
+        document.getElementById("metricTotal").textContent = orders.length;
+        document.getElementById("metricVeg").textContent = vegCount;
+        document.getElementById("metricNonVeg").textContent = nonVegCount;
+        document.getElementById("metricBoth").textContent = bothCount;
+
+        renderDynamicVendorSummary(orders);
+
+        orders.sort((a, b) => (a.username || "").localeCompare(b.username || ""));
+        const search = document.getElementById("searchInput").value.toLowerCase().trim();
+        const filtered = orders.filter(order => (order.username || "").toLowerCase().includes(search));
+
+        tableBody.innerHTML = "";
+
+        if (filtered.length === 0) {
+          tableBody.innerHTML = `<tr><td colspan="9" class="text-center py-4 text-muted">No orders found matching search criteria.</td></tr>`;
+        } else {
+          filtered.forEach(order => {
+            const row = document.createElement("tr");
+            row.innerHTML = `
+              <td class="fw-semibold">${pickValue(order, ["username"])}</td>
+              <td>${pickValue(order, ["monday"])}</td>
+              <td>${pickValue(order, ["tuesday"])}</td>
+              <td>${pickValue(order, ["wednesday"])}</td>
+              <td>${pickValue(order, ["thursday"])}</td>
+              <td>${pickValue(order, ["bagels"])}</td>
+              <td>${pickValue(order, ["bubbakoos"])}</td>
+              <td>${pickValue(order, ["icecream"])}</td>
+              <td>${mealBadge(pickValue(order, ["thursday"]))}</td>
+            `;
+            tableBody.appendChild(row);
+          });
+        }
+        document.getElementById("lastUpdated").textContent = new Date().toLocaleTimeString();
+      } catch (error) {
+        console.error("Dashboard Orders Error:", error);
+        tableBody.innerHTML = `<tr><td colspan="9" class="text-center text-danger">Failed to load orders. Check database connection.</td></tr>`;
+      }
+    }
+
+    async function fetchContactMessages() {
+      const tableBody = document.getElementById("contactMessagesTableBody");
+      try {
+        const { data: messages, error } = await db.from("contact_messages").select("*").order("created_at", { ascending: false });
+        if (error) throw error;
+        tableBody.innerHTML = "";
+
+        if (!messages || messages.length === 0) {
+          tableBody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-muted">No contact messages received yet.</td></tr>`;
+          return;
+        }
+
+        messages.forEach(msg => {
+          const row = document.createElement("tr");
+          const createdDate = msg.created_at ? new Date(msg.created_at).toLocaleString() : "N/A";
+          row.innerHTML = `
+            <td class="fw-semibold">${msg.name || "N/A"}</td>
+            <td>${msg.email || "N/A"}</td>
+            <td>${msg.message || "N/A"}</td>
+            <td><span class="badge bg-warning text-dark">${msg.status || "Pending"}</span></td>
+            <td><small class="text-muted">${createdDate}</small></td>
+          `;
+          tableBody.appendChild(row);
+        });
+      } catch (error) {
+        console.error("Fetch Messages Error:", error);
+        tableBody.innerHTML = `<tr><td colspan="5" class="text-center text-danger">Failed to load contact messages.</td></tr>`;
+      }
+    }
+
+    async function loadSubscribers() {
+      const table = document.getElementById("subscriberTable");
+      try {
+        const response = await fetch("/api/subscribers");
+        if (!response.ok) throw new Error("Failed to load subscribers");
+        const subscribers = await response.json();
+
+        if (subscribers.length === 0) {
+          table.innerHTML = `<tr><td colspan="3" class="text-center py-4 text-muted">No phone subscribers enrolled yet.</td></tr>`;
+          return;
+        }
+
+        table.innerHTML = subscribers.map(sub => `
+          <tr>
+            <td>${sub.id}</td>
+            <td class="fw-semibold">${sub.phone}</td>
+            <td>${new Date(sub.subscribedAt).toLocaleString()}</td>
+          </tr>
+        `).join("");
+      } catch (err) {
+        console.error("Subscriber load error:", err);
+        table.innerHTML = `<tr><td colspan="3" class="text-center text-danger">Failed to fetch subscribers list.</td></tr>`;
+      }
+    }
+
+    async function loadSubscriberCount() {
+      const badge = document.getElementById("modalSubscriberCount");
+      try {
+        const response = await fetch("/api/subscribers");
+        if (response.ok) {
+          const subscribers = await response.json();
+          badge.textContent = subscribers.length;
+        }
+      } catch (err) {
+        badge.textContent = "?";
+      }
+    }
+
+    async function sendNotification() {
+      const msgInput = document.getElementById("notificationMessage");
+      const btn = document.getElementById("sendNotificationBtn");
+      const alertBox = document.getElementById("modalAlert");
+      const message = msgInput.value.trim();
+
+      if (!message) {
+        alertBox.className = "alert alert-warning py-2 mb-0 small";
+        alertBox.textContent = "Please enter a notification message.";
+        alertBox.classList.remove("d-none");
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = "Sending...";
+      alertBox.classList.add("d-none");
+
+      try {
+        const response = await fetch("/api/send-notification", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message })
+        });
+        const data = await response.json();
+
+        if (response.ok && data.success) {
+          alertBox.className = "alert alert-success py-2 mb-0 small";
+          alertBox.textContent = "Notification sent to subscribers successfully!";
+          alertBox.classList.remove("d-none");
+          msgInput.value = "";
+        } else {
+          alertBox.className = "alert alert-danger py-2 mb-0 small";
+          alertBox.textContent = data.error || "Failed to send notification.";
+          alertBox.classList.remove("d-none");
+        }
+      } catch (err) {
+        console.error("Notification Error:", err);
+        alertBox.className = "alert alert-danger py-2 mb-0 small";
+        alertBox.textContent = "Network error sending notification.";
+        alertBox.classList.remove("d-none");
+      } finally {
+        btn.disabled = false;
+        btn.textContent = "Send Notification";
+      }
+    }
+
+    async function logout() {
+      try {
+        await fetch("/logout", { method: "POST", credentials: "include" });
+      } catch (error) {
+        console.error(error);
+      }
+      localStorage.clear();
+      window.location.href = "login.html";
+    }
+
+    window.addEventListener("DOMContentLoaded", async () => {
+      const searchInput = document.getElementById("searchInput");
+      if (searchInput) {
+        searchInput.addEventListener("input", fetchLiveDashboardData);
+      }
+      const allowed = await ensureAdminAccess();
+      if (allowed) {
+        fetchLiveDashboardData();
+        fetchContactMessages();
+        loadSubscribers();
+      }
+    });
+  </script>
 </body>
 </html>
-
-
 

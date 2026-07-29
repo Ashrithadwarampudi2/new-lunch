@@ -280,3 +280,31 @@ app.get("/", (req, res) => {
 app.listen(PORT, () => {
     console.log(`Commvault Lunch Portal server running on port ${PORT}`);
 });
+
+app.get("/api/subscribers", (req, res) => {
+  db.all(
+    "SELECT * FROM subscribers ORDER BY subscribedAt DESC",
+    [],
+    (err, rows) => {
+      if (err) {
+        return res.status(500).json({ error: err.message });
+      }
+
+      res.json(rows);
+    }
+  );
+});
+
+
+app.post("/api/send-notification", async (req, res) => {
+
+    const message = req.body.message;
+
+    // get subscribers from database
+
+    // send notification to each subscriber
+
+    res.json({
+        success: true
+    });
+});

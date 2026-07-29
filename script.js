@@ -418,3 +418,40 @@ if (updatesForm) {
     });
 }
 
+const sendBtn = document.getElementById("sendNotificationBtn");
+
+if (sendBtn) {
+    sendBtn.addEventListener("click", async () => {
+
+        const message =
+            document.getElementById("notificationMessage").value.trim();
+
+        if (!message) {
+            alert("Please enter a message.");
+            return;
+        }
+
+        try {
+            const response = await fetch("/api/send-notification", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ message })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                alert("Notification sent!");
+                document.getElementById("notificationMessage").value = "";
+            } else {
+                alert(data.error);
+            }
+
+        } catch (err) {
+            console.error(err);
+            alert("Failed to send notification.");
+        }
+    });
+}
