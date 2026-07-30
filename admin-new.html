@@ -446,7 +446,7 @@
         const cardHtml = `
           <div class="col-md-6 col-lg-4">
             <div class="p-3 border rounded bg-white shadow-sm h-100">
-              <h6 class="fw-bold text-success border-bottom pb-2 mb-2">📌 ${catTitle} Recommendation</h6>
+              <h6 class="fw-bold text-success border-bottom pb-2 mb-2"> ${catTitle} Recommendation</h6>
               <ul class="list-unstyled mb-0 small">
                 ${recLines.map(line => `<li class="mb-1">▪ ${line}</li>`).join('')}
               </ul>
@@ -465,7 +465,7 @@
       const cards = document.querySelectorAll("#recommendationsContainer .card");
       let text = "Commvault Weekly Vendor Purchase Summary:\n\n";
       cards.forEach(card => {
-        const title = card.querySelector("h6").innerText.replace("📌 ", "");
+        const title = card.querySelector("h6").innerText.replace(" ", "");
         const items = Array.from(card.querySelectorAll("li")).map(li => li.innerText.replace("▪ ", "- "));
         text += `${title}:\n${items.join("\n")}\n\n`;
       });
