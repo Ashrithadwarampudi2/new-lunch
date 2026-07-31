@@ -117,6 +117,12 @@
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
   <script>
+    // Initialize Supabase Directly
+    const supabaseUrl = 'https://udqraywfsemkulraudbd.supabase.co';
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVkcXJheXdmc2Vta3VscmF1ZGJkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQxMzI2NjEsImV4cCI6MjA5OTcwODY2MX0.2VWPvdoJP-bYalmBa56wqqEWX8jPABNgFokYomQo2Rk';
+    const db = supabase.createClient(supabaseUrl, supabaseKey);
+
+
     document.addEventListener("DOMContentLoaded", () => {
       function showContactStatus(message, isError = false) {
         const statusBox = document.getElementById("contactStatus");
@@ -131,16 +137,10 @@
       if (contactForm) {
         contactForm.addEventListener("submit", async (e) => {
           e.preventDefault();
-          console.log("CONTACT FORM SUBMITTED");
 
 
           const submitButton = document.getElementById("contactSubmitBtn");
           const formData = new FormData(contactForm);
-          const data = {
-            name: formData.get("name"),
-            email: formData.get("email"),
-            message: formData.get("message")
-          };
 
 
           submitButton.disabled = true;
@@ -149,29 +149,29 @@
 
 
           try {
-            const response = await fetch("/api/contact", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json"
-              },
-              body: JSON.stringify(data)
-            });
+            // Direct insertion into Supabase
+            const { data, error } = await db
+              .from('contact_messages')
+              .insert([
+                {
+                  name: formData.get("name"),
+                  email: formData.get("email"),
+                  message: formData.get("message"),
+                  status: 'Pending'
+                }
+              ]);
 
 
-            console.log("API Status:", response.status);
-            const result = await response.json();
-
-
-            if (response.ok) {
+            if (error) {
+              console.error("Supabase Error:", error);
+              showContactStatus("Failed to submit contact form to database.", true);
+            } else {
               contactForm.reset();
               showContactStatus("Your message was sent successfully.");
               const successModal = new bootstrap.Modal(
                 document.getElementById("contactSuccessModal")
               );
               successModal.show();
-            } else {
-              showContactStatus(result.error || "Failed to send message.", true);
-              console.error(result);
             }
           } catch (err) {
             console.error("Contact Form Error:", err);
