@@ -268,8 +268,49 @@
         </div>
     </footer>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+  const PUBLIC_VAPID_KEY = 'BCEiGf5OfdNZWl3BMJ5pg2i1T3bd8SXk9ttcyI2e4EBQw_E5uYIezCyzDADF_YS07M0jAiDEUCcx_F4Wwi7dq8';
+
+  async function registerPushNotifications() {
+    if ('serviceWorker' in navigator && 'PushManager' in window) {
+      try {
+        const registration = await navigator.serviceWorker.register('/sw.js');
+
+        // Request user permission for notifications
+        const permission = await Notification.requestPermission();
+        if (permission === 'granted') {
+          const subscription = await registration.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(PUBLIC_VAPID_KEY)
+          });
+
+          // Save subscription to backend
+          await fetch('/api/save-subscription', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(subscription)
+          });
+
+          console.log('Push notification registration active!');
+        }
+      } catch (err) {
+        console.error('Push Subscription Error:', err);
+      }
+    }
+  }
+
+  function urlBase64ToUint8Array(base64String) {
+    const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const rawData = window.atob(base64);
+    return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
+  }
+
+  window.addEventListener('DOMContentLoaded', registerPushNotifications);
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
     <script src="script.js"></script>
 </body>
-
 </html>
