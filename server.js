@@ -19,8 +19,8 @@ const JWT_SECRET = process.env.JWT_SECRET || "commvault-portal-secret-key-2026";
 // ==========================================
 // VAPID & WEB-PUSH CONFIGURATION
 // ==========================================
-const PUBLIC_VAPID_KEY = process.env.PUBLIC_VAPID_KEY || "BCEiGf5OfdNZWl3BMJ5pg2i1T3bd8SXk9ttcyI2e4EBQw_E5uYIezCyzDADF_YS07M0jAiDEUCcx_F4Wwi7dq8";
-const PRIVATE_VAPID_KEY = process.env.PRIVATE_VAPID_KEY || "_dE9mgE3iCTFAo7lI8BeyeNYX8SsMUXr6QkZIhx3XBM";
+const PUBLIC_VAPID_KEY = process.env.PUBLIC_VAPID_KEY || "BLwCm04sZAn5P9Swr-9UBzTujwH8GBL-kLFD6nJNnzNqx1P4nMkA2UQ5ldlO9XSUhXrHxO2lKMFjV0knlJwcdiM";
+const PRIVATE_VAPID_KEY = process.env.PRIVATE_VAPID_KEY || "jX8L-ysZCffyZ8ajIMUO1HzPZo3Vb7N4u6TLfm533aY";
 
 
 webpush.setVapidDetails(
