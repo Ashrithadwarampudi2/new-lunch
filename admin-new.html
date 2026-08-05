@@ -133,7 +133,7 @@
                       <th>Wednesday</th>
                       <th>Thursday</th>
                       <th>Bagels</th>
-                      <th>friday</th>
+                      <th>Friday</th>
                       <th>Ice Cream</th>
                       <th>Status</th>
                     </tr>
@@ -359,7 +359,7 @@
 
     function renderDynamicVendorSummary(orders) {
       const container = document.getElementById("dynamicVendorSummaryContainer");
-      const categories = ["monday", "tuesday", "wednesday", "thursday", "bagels", "friday", "icecream"];
+      const categories = ["monday", "tuesday", "wednesday", "thursday", "bagels", "Friday", "icecream"];
       let totalParticipating = 0;
       let totalMissing = 0;
       const summaryMap = {};
@@ -448,7 +448,7 @@
           const slicesNeeded = totalCategoryCount * CONVERSION_RULES.slicesPerPerson;
           const piesNeeded = Math.ceil(slicesNeeded / CONVERSION_RULES.pizzaSlicesPerPie);
           recLines.push(`Order approx. <strong>${piesNeeded} Whole Pizzas</strong> (${totalCategoryCount} eaters / ${slicesNeeded} slices)`);
-        } else if (cat === "friday" || cat === "icecream") {
+        } else if (cat === "Friday" || cat === "icecream") {
           recLines.push(`Order <strong>${totalCategoryCount} Individual Portions</strong>`);
         } else {
           const fullTrays = Math.floor(totalCategoryCount / CONVERSION_RULES.fullTrayServings);
@@ -552,7 +552,7 @@
               <td>${pickValue(order, ["wednesday"])}</td>
               <td>${pickValue(order, ["thursday"])}</td>
               <td>${pickValue(order, ["bagels"])}</td>
-              <td>${pickValue(order, ["friday"])}</td>
+              <td>${pickValue(order, ["Friday"])}</td>
               <td>${pickValue(order, ["icecream"])}</td>
               <td>${mealBadge(pickValue(order, ["thursday"]))}</td>
             `;
