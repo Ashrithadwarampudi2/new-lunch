@@ -8,20 +8,23 @@ const cookieParser = require("cookie-parser");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const webpush = require("web-push");
-const { createClient } = require("@supabase/supabase-js");
 const sql = require('mssql');
 
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = 4000;
 const JWT_SECRET = process.env.JWT_SECRET || "commvault-portal-secret-key-2026";
 
 // SQL Server configuration (placed after app/constants)
 const sqlConfig = {
-    server: 'lunchmenu',
+    user: 'sa',
+    password: 'Commvault!12',
+    server: 'localhost',
+    port: 1433,
     database: 'LunchPortal',
     options: {
-        trustServerCertificate: true
+        trustServerCertificate: true,
+        encrypt: false
     }
 };
 
@@ -40,12 +43,6 @@ webpush.setVapidDetails(
 );
 
 
-// ==========================================
-// SUPABASE CLIENT INITIALIZATION
-// ==========================================
-const supabaseUrl = 'https://udqraywfsemkulraudbd.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVkcXJheXdmc2Vta3VscmF1ZGJkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQxMzI2NjEsImV4cCI6MjA5OTcwODY2MX0.2VWPvdoJP-bYalmBa56wqqEWX8jPABNgFokYomQo2Rk';
-const supabase = createClient(supabaseUrl, supabaseKey);
 
 
 // ==========================================
@@ -397,63 +394,12 @@ app.post("/api/send-notification", async (req, res) => {
 
 
 // ==========================================
-// 4. CONTACT FORM ENDPOINT (SUPABASE INTEGRATION)
-// ==========================================
-app.post("/api/contact", async (req, res) => {
-    const { name, email, message } = req.body;
-
-
-    if (!name || !email || !message) {
-        return res.status(400).json({ error: "All fields are required." });
-    }
-
-
-    if (name.trim().length < 2) {
-        return res.status(400).json({ error: "Name must be at least 2 characters." });
-    }
-
-
-    const emailRegex = /^[^^\s@]+@[^^\s@]+\.[^^\s@]+$/;
-    if (!emailRegex.test(email)) {
-        return res.status(400).json({ error: "Please provide a valid email address." });
-    }
-
-
-    if (message.trim().length < 5) {
-        return res.status(400).json({ error: "Message must be at least 5 characters long." });
-    }
-
-
-    try {
-        const { data, error } = await supabase
-            .from("contact_messages")
-            .insert([
-                {
-                    name: name.trim(),
-                    email: email.trim(),
-                    message: message.trim(),
-                    status: "Pending"
-                }
-            ]);
-
-
-        if (error) {
-            throw error;
-        }
-
-
-        res.status(201).json({ message: "Contact message received successfully!" });
-    } catch (err) {
-        console.error("Supabase Contact Insert Error:", err);
-        res.status(500).json({ error: "Failed to submit contact form to database." });
-    }
-});
-
-
-
-// ==========================================
 // Restaurants endpoint (SQL Server)
 // ==========================================
+app.get('/test', (req, res) => {
+    res.send('test works');
+});
+console.log("Restaurants route loaded");
 app.get('/api/restaurants', async (req, res) => {
     const activeOnly = req.query.active === 'true';
 
@@ -461,18 +407,36 @@ app.get('/api/restaurants', async (req, res) => {
         ? 'SELECT * FROM dbo.restaurants WHERE is_active = 1'
         : 'SELECT * FROM dbo.restaurants';
 
+    console.log('[restaurants] executing query:', query);
+
     try {
+        console.log('[restaurants] connecting to SQL Server...');
         await sql.connect(sqlConfig);
+        console.log('[restaurants] SQL Server connection established');
 
         const result = await sql.query(query);
+        console.log(`[restaurants] query completed, rows=${result.recordset.length}`);
 
         res.json(result.recordset);
     } catch (err) {
-        console.error('SQL Server error fetching restaurants:', err);
+        console.error('[restaurants] SQL Server error fetching restaurants:', err);
+        if (err.code) {
+            console.error('[restaurants] SQL Server error code:', err.code);
+        }
+        if (err.originalError) {
+            console.error('[restaurants] SQL Server original error:', err.originalError);
+        }
 
         res.status(500).json({
             error: 'Database error fetching restaurants.'
         });
+    } finally {
+        try {
+            await sql.close();
+            console.log('[restaurants] SQL Server connection closed');
+        } catch (closeErr) {
+            console.error('[restaurants] error closing SQL Server connection:', closeErr);
+        }
     }
 });
 
@@ -481,11 +445,106 @@ app.get('/api/restaurants', async (req, res) => {
 // ==========================================
 // START SERVER
 // ==========================================
+app.get('/route-check', (req, res) => {
+    res.json({
+        sqlTestExists: true
+    });
+});
+
+console.log('ABOUT TO REGISTER SQL TEST ROUTE');
+console.log('SQL TEST ROUTE REGISTERED');
+app.get('/api/sql-test', async (req, res) => {
+    const serverOptions = [
+        'localhost',
+        '127.0.0.1',
+        'localhost,1433',
+        'localhost\\MSSQLSERVER'
+    ];
+
+    const query = `SELECT @@SERVERNAME AS ServerName, DB_NAME() AS DatabaseName`;
+    let lastError = null;
+
+    for (const serverValue of serverOptions) {
+        const testConfig = {
+            ...sqlConfig,
+            server: serverValue,
+            port: 1433,
+            options: {
+                ...sqlConfig.options,
+                trustServerCertificate: true,
+                encrypt: false
+            }
+        };
+
+        console.log(`[sql-test] attempting SQL Server connection using: ${serverValue}`);
+
+        try {
+            await sql.connect(testConfig);
+            console.log(`[sql-test] connected successfully using: ${serverValue}`);
+
+            const result = await sql.query(query);
+            console.log('[sql-test] query result:', result.recordset);
+
+            res.json({
+                server: serverValue,
+                data: result.recordset
+            });
+            return;
+        } catch (err) {
+            lastError = err;
+            console.error(`[sql-test] connection attempt failed for ${serverValue}:`, err);
+            try {
+                await sql.close();
+            } catch (closeErr) {
+                console.error('[sql-test] error closing SQL connection after failed attempt:', closeErr);
+            }
+        }
+    }
+
+    const errorMessage = lastError ? lastError.message : 'Unknown SQL Server connection error';
+    res.status(500).json({ error: errorMessage });
+});
+console.log('SQL TEST ROUTE REGISTRATION COMPLETE');
+
 app.get("/", (req, res) => {
     res.sendFile(path.join(__dirname, "login.html"));
 });
 
+console.log("TEST ROUTE LOADED");
+
+function logRegisteredRoutes() {
+    if (!app._router || !app._router.stack) {
+        console.log('No Express router stack detected.');
+        return;
+    }
+
+    console.log('Registered Express routes:');
+    app._router.stack
+        .filter((layer) => layer.route)
+        .forEach((layer) => {
+            const methods = Object.keys(layer.route.methods).map((m) => m.toUpperCase()).join(', ');
+            console.log(`REGISTERED ROUTE: ${methods} ${layer.route.path}`);
+        });
+}
+
+logRegisteredRoutes();
+
+console.log("BOTTOM OF FILE REACHED");
+
+
 
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`Commvault Lunch Portal server running on port ${PORT}`);
+});
+
+process.on('exit', (code) => {
+    console.log('NODE EXITED WITH CODE:', code);
+});
+
+process.on('uncaughtException', (err) => {
+    console.error('UNCAUGHT EXCEPTION:', err);
+});
+
+process.on('unhandledRejection', (err) => {
+    console.error('UNHANDLED REJECTION:', err);
 });
