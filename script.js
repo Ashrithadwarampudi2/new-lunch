@@ -1,73 +1,26 @@
 // ==========================================
-// SUPABASE CLIENT INITIALIZATION
+// RESTAURANTS & MENU LOADER (REST Endpoints)
 // ==========================================
-const supabaseUrl = 'https://udqraywfsemkulraudbd.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVkcXJheXdmc2Vta3VscmF1ZGJkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQxMzI2NjEsImV4cCI6MjA5OTcwODY2MX0.2VWPvdoJP-bYalmBa56wqqEWX8jPABNgFokYomQo2Rk';
-const db = supabase.createClient(supabaseUrl, supabaseKey);
 
-// DOM Elements
-const surveyForm = document.getElementById("lunchSurveyForm");
-const orderStatusAlert = document.getElementById("orderStatus");
-const preferenceModalElement = document.getElementById("preferenceModal");
-const preferenceModal = preferenceModalElement ? new bootstrap.Modal(preferenceModalElement) : null;
-const submitPreferenceBtn = document.getElementById("submitPreferenceBtn");
-const surveySuccessModalElement = document.getElementById("surveySuccessModal");
-const surveySuccessModal = surveySuccessModalElement ? new bootstrap.Modal(surveySuccessModalElement) : null;
-
-// ==========================================
-// BACK BURNER HELPER FUNCTION
-// ==========================================
-// Fetch ONLY active restaurants from Supabase (skips 'back burner' restaurants)
 async function fetchActiveRestaurants() {
     try {
-        const { data: restaurants, error } = await db
-            .from('restaurants')
-            .select('*')
-            .eq('is_active', true);
-
-        if (error) throw error;
-        
-        console.log("Active Restaurants:", restaurants);
-        return restaurants;
+        const response = await fetch('/api/restaurants?active=true');
+        if (!response.ok) throw new Error('Failed to fetch restaurants');
+        return await response.json();
     } catch (err) {
         console.error("Error fetching active restaurants:", err);
         return [];
     }
 }
 
-// ==========================================
-// FUNCTIONS
-// ==========================================
-
-// 1. Load Weekly Menu Titles & Update Selection Options Dynamically
 async function loadWeeklyMenuTitles() {
     try {
-        // Fetch active restaurants
-        const activeRestaurants = await fetchActiveRestaurants();
-        const activeNames = activeRestaurants.map(r => r.name);
-
-        // Fetch weekly menus
-        const { data: menus, error } = await db
-            .from("weekly_menus")
-            .select("*")
-            .order("id", { ascending: false });
-
-        console.log("Menus:", menus);
-        console.log("Error:", error);
-        console.log("Menu page loaded");
-        if (error) throw error;
+        const response = await fetch('/api/weekly-menu');
+        if (!response.ok) throw new Error('Failed to fetch weekly menu');
+       
+        const menus = await response.json();
 
         if (menus && menus.length > 0) {
-            // Find most recent approved weekly menu
-            const latestWeek = menus[0].week_start_date;
-
-            // Filter menus to only include approved items AND active restaurants
-            const currentWeekMenus = menus.filter(m =>
-                m.week_start_date === latestWeek &&
-                m.is_approved &&
-                (activeNames.length === 0 || activeNames.includes(m.restaurant_name))
-            );
-
             const daysMap = {
                 Monday: "mondayTitle",
                 Tuesday: "tuesdayTitle",
@@ -76,47 +29,31 @@ async function loadWeeklyMenuTitles() {
                 Friday: "fridayTitle"
             };
 
-            currentWeekMenus.forEach(menu => {
+            menus.forEach(menu => {
                 const dayKey = menu.day_of_week;
-                console.log(menu.day_of_week, menu.meal_type, menu.restaurant_name);
-
                 if (dayKey === "Friday") {
                     if (menu.meal_type === "Breakfast") {
                         const bagelsEl = document.getElementById("bagelsTitle");
-                        if (bagelsEl) {
-                            bagelsEl.textContent = `Friday Breakfast: ${menu.restaurant_name}`;
-                        }
+                        if (bagelsEl) bagelsEl.textContent = `Friday Breakfast: ${menu.restaurant_name}`;
                     }
-
                     if (menu.meal_type === "Lunch") {
                         const fridayEl = document.getElementById("fridayTitle");
-                        if (fridayEl) {
-                            fridayEl.textContent = `Friday Lunch: ${menu.restaurant_name}`;
-                        }
+                        if (fridayEl) fridayEl.textContent = `Friday Lunch: ${menu.restaurant_name}`;
                     }
                 } else if (daysMap[dayKey] && menu.restaurant_name) {
                     const el = document.getElementById(daysMap[dayKey]);
-                    if (el) {
-                        el.textContent = `${dayKey}: ${menu.restaurant_name}`;
-                    }
-                }
-
-                // Update corresponding radio label options dynamically if available
-                const optionLabel = document.getElementById(`${dayKey.toLowerCase()}OptionLabel`);
-                if (optionLabel) {
-                    optionLabel.textContent = `${menu.restaurant_name} Option`;
+                    if (el) el.textContent = `${dayKey}: ${menu.restaurant_name}`;
                 }
             });
         }
     } catch (err) {
-        console.warn("Using default menu titles due to database fetch error:", err);
-        // Fallback default titles if menu fetch fails
+        console.warn("Using fallback menu titles due to fetch error:", err);
         const fallbacks = {
             mondayTitle: "Monday: Lunch Option",
             tuesdayTitle: "Tuesday: Lunch Option",
             wednesdayTitle: "Wednesday: Pizza / Lunch Option",
             thursdayTitle: "Thursday: Lunch Option",
-            fridayTitle: "Friday Lunch: Bubbakoos"
+            fridayTitle: "Friday Lunch: Option"
         };
         for (const [id, title] of Object.entries(fallbacks)) {
             const el = document.getElementById(id);
@@ -125,333 +62,56 @@ async function loadWeeklyMenuTitles() {
     }
 }
 
-// 2. Check and Prompt Diet Preference
-function checkUserPreference() {
-    const storedPref = localStorage.getItem("dietPreference");
-    if (!storedPref && preferenceModal) {
-        preferenceModal.show();
-    }
-}
-
-// Save Diet Preference Modal Event Handler
-if (submitPreferenceBtn) {
-    submitPreferenceBtn.addEventListener("click", () => {
-        const selectedRadio = document.querySelector('input[name="dietPreference"]:checked');
-        if (selectedRadio) {
-            const pref = selectedRadio.value;
-            localStorage.setItem("dietPreference", pref);
-            if (preferenceModal) preferenceModal.hide();
-        }
-    });
-}
-
-// 3. Handle Order Form Submission
+// Handle Order Submission
+const surveyForm = document.getElementById("lunchSurveyForm");
 if (surveyForm) {
     surveyForm.addEventListener("submit", async (e) => {
         e.preventDefault();
+        const statusAlert = document.getElementById("orderStatus");
+        if (statusAlert) {
+            statusAlert.className = "alert alert-info";
+            statusAlert.textContent = "Submitting your order...";
+            statusAlert.classList.remove("d-none");
+        }
 
-        const username = localStorage.getItem("username") || "Anonymous";
         const formData = new FormData(surveyForm);
-
-        // Gather selections
-        const orderData = {
-            username: username,
-            monday: formData.get("monday") || "None",
-            tuesday: formData.get("tuesday") || "None",
-            wednesday: formData.get("wednesday") || "None",
-            thursday: formData.get("thursday") || "None",
-            bagels: formData.get("bagels") || "No",
-            bubbakoos: formData.get("bubbakoos") || "None",
-            icecream: formData.get("icecream") || "No",
-            created_at: new Date().toISOString()
-        };
-
-        const submitBtn = document.getElementById("orderSubmitBtn");
-        if (submitBtn) {
-            submitBtn.disabled = true;
-            submitBtn.textContent = "Submitting...";
-        }
+        const orderData = Object.fromEntries(formData.entries());
+        orderData.username = localStorage.getItem("username") || "Anonymous";
 
         try {
-            // Check if user already submitted an order to update or insert
-            const { data: existingOrders } = await db
-                .from("lunch_orders")
-                .select("id")
-                .eq("username", username);
-
-            let resultError;
-            if (existingOrders && existingOrders.length > 0) {
-                // Update existing order
-                const { error } = await db
-                    .from("lunch_orders")
-                    .update(orderData)
-                    .eq("username", username);
-                resultError = error;
-            } else {
-                // Insert new order
-                const { error } = await db
-                    .from("lunch_orders")
-                    .insert([orderData]);
-                resultError = error;
-            }
-
-            if (resultError) throw resultError;
-
-            // Show order summary modal
-            const summaryContainer = document.getElementById("orderSummaryContent");
-            if (summaryContainer) {
-                summaryContainer.innerHTML = `
-                    <p class="lead">Thank you, <strong>${username}</strong>! Your order was submitted successfully.</p>
-                    <ul class="list-group list-group-flush text-start">
-                        <li class="list-group-item"><strong>Monday:</strong> ${orderData.monday}</li>
-                        <li class="list-group-item"><strong>Tuesday:</strong> ${orderData.tuesday}</li>
-                        <li class="list-group-item"><strong>Wednesday:</strong> ${orderData.wednesday}</li>
-                        <li class="list-group-item"><strong>Thursday:</strong> ${orderData.thursday}</li>
-                        <li class="list-group-item"><strong>Friday Bagels:</strong> ${orderData.bagels}</li>
-                        <li class="list-group-item"><strong>Friday Lunch:</strong> ${orderData.bubbakoos}</li>
-                        <li class="list-group-item"><strong>Friday Ice Cream:</strong> ${orderData.icecream}</li>
-                    </ul>
-                `;
-            }
-
-            if (surveySuccessModal) {
-                surveySuccessModal.show();
-            }
-
-            if (orderStatusAlert) {
-                orderStatusAlert.className = "alert alert-success";
-                orderStatusAlert.textContent = "Your order has been recorded successfully!";
-                orderStatusAlert.classList.remove("d-none");
-            }
-        } catch (err) {
-            console.error("Error submitting lunch order:", err);
-            if (orderStatusAlert) {
-                orderStatusAlert.className = "alert alert-danger";
-                orderStatusAlert.textContent = "Failed to submit order. Please try again.";
-                orderStatusAlert.classList.remove("d-none");
-            }
-        } finally {
-            if (submitBtn) {
-                submitBtn.disabled = false;
-                submitBtn.textContent = "Submit Order";
-            }
-        }
-    });
-}
-
-// 4. Load Menu Page (menu.html)
-async function loadMenuPage() {
-    const menuContainer = document.getElementById("menu-cards-container");
-
-    if (!menuContainer) return;
-
-    try {
-        const activeRestaurants = await fetchActiveRestaurants();
-        const activeNames = activeRestaurants.map(r => r.name);
-
-        const { data: menus, error } = await db
-            .from("weekly_menus")
-            .select("*")
-            .eq("is_approved", true)
-            .order("week_start_date", { ascending: false });
-
-        if (error) throw error;
-
-        if (!menus || menus.length === 0) {
-            menuContainer.innerHTML =
-                '<p class="text-center text-danger">No published menus found.</p>';
-            return;
-        }
-
-        const latestWeek = menus[0].week_start_date;
-
-        const currentMenus = menus.filter(m =>
-            m.week_start_date === latestWeek &&
-            (activeNames.length === 0 || activeNames.includes(m.restaurant_name))
-        );
-
-        const dayOrder = {
-            "Monday": 1,
-            "Tuesday": 2,
-            "Wednesday": 3,
-            "Thursday": 4,
-            "Friday": 5
-        };
-
-        const mealOrder = {
-            "Breakfast": 1,
-            "Lunch": 2
-        };
-
-        currentMenus.sort((a, b) => {
-            const dayDiff = (dayOrder[a.day_of_week] || 99) - (dayOrder[b.day_of_week] || 99);
-            if (dayDiff !== 0) return dayDiff;
-            return (mealOrder[a.meal_type] || 99) - (mealOrder[b.meal_type] || 99);
-        });
-
-        const dateLabel = document.getElementById("week-date-range");
-        if (dateLabel) {
-            dateLabel.textContent = `Week of ${latestWeek}`;
-        }
-
-        const updated = document.getElementById("lastUpdated");
-        if (updated) {
-            updated.textContent = new Date().toLocaleString();
-        }
-
-        const ticker = document.getElementById("food-ticker-items");
-        if (ticker) {
-            ticker.innerHTML = currentMenus
-                .map(menu => `<span>${menu.restaurant_name}</span>`)
-                .join("");
-        }
-
-        menuContainer.innerHTML = currentMenus
-            .map(menu => `
-                <div class="col-md-4">
-                    <div class="card h-100 shadow-sm">
-                        <div class="card-body">
-                            <h5 class="card-title">${menu.day_of_week}</h5>
-                            <p class="card-text">
-                                <strong>${menu.meal_type}</strong><br>
-                                ${menu.restaurant_name}
-                            </p>
-                        </div>
-                    </div>
-                </div>
-            `)
-            .join("");
-
-    } catch (err) {
-        console.error("Menu load error:", err);
-        menuContainer.innerHTML =
-            '<p class="text-center text-danger">Failed to load menu.</p>';
-    }
-}
-
-// 5. Load Ticker for Home Page (home.html)
-async function loadHomeTicker() {
-    const ticker = document.getElementById("food-ticker-items");
-
-    if (!ticker) return;
-
-    try {
-        const activeRestaurants = await fetchActiveRestaurants();
-        const activeNames = activeRestaurants.map(r => r.name);
-
-        const { data: menus, error } = await db
-            .from("weekly_menus")
-            .select("*")
-            .eq("is_approved", true)
-            .order("week_start_date", { ascending: false });
-
-        if (error) throw error;
-
-        if (!menus || menus.length === 0) {
-            ticker.innerHTML = "<span>No menu available</span>";
-            return;
-        }
-
-        const latestWeek = menus[0].week_start_date;
-
-        const currentMenus = menus.filter(m =>
-            m.week_start_date === latestWeek &&
-            (activeNames.length === 0 || activeNames.includes(m.restaurant_name))
-        );
-
-        ticker.innerHTML =
-            currentMenus
-                .map(menu => `<span>${menu.restaurant_name}</span>`)
-                .join("") +
-            currentMenus
-                .map(menu => `<span>${menu.restaurant_name}</span>`)
-                .join("");
-
-    } catch (err) {
-        console.error("Ticker load error:", err);
-        ticker.innerHTML = "<span>Unable to load weekly menu</span>";
-    }
-}
-
-// 6. Handle Updates Form Submission (home.html)
-const updatesForm = document.getElementById("updatesForm");
-
-if (updatesForm) {
-    updatesForm.addEventListener("submit", async (e) => {
-        e.preventDefault();
-
-        const phoneInput = document.getElementById("subscriberPhone").value.trim();
-
-        try {
-            const response = await fetch("/api/subscribe", {
+            const response = await fetch("/api/orders", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ phone: phoneInput })
+                body: JSON.stringify(orderData)
             });
 
-            const data = await response.json();
-
             if (response.ok) {
-                const updatesModal = bootstrap.Modal.getInstance(document.getElementById('updatesModal'));
-                if (updatesModal) updatesModal.hide();
-
-                const successModal = new bootstrap.Modal(document.getElementById('subscribeSuccessModal'));
-                successModal.show();
-
-                updatesForm.reset();
+                if (statusAlert) {
+                    statusAlert.className = "alert alert-success";
+                    statusAlert.textContent = "Order submitted successfully!";
+                }
+                const surveySuccessModalElement = document.getElementById("surveySuccessModal");
+                if (surveySuccessModalElement) {
+                    const modal = new bootstrap.Modal(surveySuccessModalElement);
+                    modal.show();
+                }
             } else {
-                alert(data.error || "Subscription failed. Please try again.");
+                const err = await response.json();
+                if (statusAlert) {
+                    statusAlert.className = "alert alert-danger";
+                    statusAlert.textContent = err.error || "Failed to submit order.";
+                }
             }
         } catch (err) {
-            console.error("Subscription error:", err);
-            alert("Network error submitting subscription.");
+            console.error("Submission error:", err);
+            if (statusAlert) {
+                statusAlert.className = "alert alert-danger";
+                statusAlert.textContent = "Network error while submitting order.";
+            }
         }
     });
 }
 
-// 7. Notification Sending Button Handler
-const sendBtn = document.getElementById("sendNotificationBtn");
-
-if (sendBtn) {
-    sendBtn.addEventListener("click", async () => {
-        const message = document.getElementById("notificationMessage").value.trim();
-
-        if (!message) {
-            alert("Please enter a message.");
-            return;
-        }
-
-        try {
-            const response = await fetch("/api/send-notification", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({ message })
-            });
-
-            const data = await response.json();
-
-            if (response.ok) {
-                alert("Notification sent!");
-                document.getElementById("notificationMessage").value = "";
-            } else {
-                alert(data.error);
-            }
-
-        } catch (err) {
-            console.error(err);
-            alert("Failed to send notification.");
-        }
-    });
-}
-
-// Initialize on page load
 document.addEventListener("DOMContentLoaded", () => {
     loadWeeklyMenuTitles();
-    loadMenuPage();
-    loadHomeTicker();
-    checkUserPreference();
 });
-
-
