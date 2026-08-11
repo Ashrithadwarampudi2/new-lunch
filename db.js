@@ -12,6 +12,11 @@ const config = {
     }
 };
 
+const pool = new sql.ConnectionPool(config);
+const poolConnect = pool.connect().catch((err) => {
+    console.error('DB pool connection failed:', err);
+});
+
 console.log('LOADED DB CONFIG:');
 console.log({
     server: config.server,
@@ -21,16 +26,19 @@ console.log({
 });
 
 async function query(text, params = []) {
-    console.log('DB QUERY:', text);
+    await poolConnect;
 
     let idx = 0;
-
     const transformed = text.replace(/\?/g, () => `@p${++idx}`);
 
-    const pool = await sql.connect(config);
+    console.log('DB QUERY:', {
+        server: config.server,
+        port: config.port,
+        database: config.database,
+        query: transformed
+    });
 
     const request = pool.request();
-
     params.forEach((p, i) => {
         request.input(`p${i + 1}`, p);
     });
@@ -38,4 +46,4 @@ async function query(text, params = []) {
     return await request.query(transformed);
 }
 
-module.exports = { query };
+module.exports = { query, config, pool };

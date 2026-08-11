@@ -14,20 +14,6 @@ const app = express();
 const PORT = 4000;
 const JWT_SECRET = process.env.JWT_SECRET || "commvault-portal-secret-key-2026";
 
-// SQL Server configuration (placed after app/constants)
-const sqlConfig = {
-    user: 'sa',
-    password: 'Commvault!12',
-    server: 'localhost',
-    port: 1433,
-    database: 'LunchPortal',
-    options: {
-        trustServerCertificate: true,
-        encrypt: false
-    }
-};
-
-
 // ==========================================
 // VAPID & WEB-PUSH CONFIGURATION
 // ==========================================
@@ -125,8 +111,12 @@ app.post("/api/login", async (req, res) => {
 
         res.json({ message: "Login successful", username: user.username, role: user.role });
     } catch (err) {
-        console.error('Database authentication error:', err);
-        return res.status(500).json({ error: "Database authentication error." });
+        console.error('[login] SQL Server error fetching user:', err);
+        return res.status(500).json({
+            error: err.message,
+            code: err.code,
+            originalError: err.originalError
+        });
     }
 });
 
@@ -451,3 +441,6 @@ app.get('/test-sql', async (req, res) => {
         res.status(500).json({ error: err.message || 'SQL test error' });
     }
 });
+setInterval(() => {
+    console.log('Server heartbeat...');
+}, 30000);
