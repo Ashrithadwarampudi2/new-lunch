@@ -2,13 +2,12 @@
 // DEPENDENCIES & INITIALIZATION
 // ==========================================
 const express = require("express");
-const sqlite3 = require("sqlite3").verbose();
 const path = require("path");
 const cookieParser = require("cookie-parser");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const webpush = require("web-push");
-const sql = require('mssql');
+const db = require('./db');
 
 
 const app = express();
@@ -55,69 +54,7 @@ app.use(express.static(__dirname));
 
 
 
-// ==========================================
-// DATABASE SETUP (SQLITE)
-// ==========================================
-const db = new sqlite3.Database("./database.db", (err) => {
-    if (err) {
-        console.error("Error connecting to SQLite database:", err.message);
-    } else {
-        console.log("Connected to SQLite database.");
-        initializeDatabase();
-    }
-});
-
-
-function initializeDatabase() {
-    db.serialize(() => {
-        // Users Table
-        db.run(`
-            CREATE TABLE IF NOT EXISTS users (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                username TEXT UNIQUE NOT NULL,
-                password TEXT NOT NULL,
-                role TEXT NOT NULL DEFAULT 'user',
-                createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
-            )
-        `);
-
-
-        // Subscribers Table (Text Alerts)
-        db.run(`
-            CREATE TABLE IF NOT EXISTS subscribers (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                phone TEXT UNIQUE NOT NULL,
-                subscribedAt DATETIME DEFAULT CURRENT_TIMESTAMP
-            )
-        `);
-
-
-        // Push Notifications Table (Browser Push Subscriptions)
-        db.run(`
-            CREATE TABLE IF NOT EXISTS push_subscriptions (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                endpoint TEXT UNIQUE NOT NULL,
-                p256dh TEXT NOT NULL,
-                auth TEXT NOT NULL,
-                createdAt DATETIME DEFAULT CURRENT_TIMESTAMP
-            )
-        `);
-
-
-        // Seed default admin and user if users table is empty
-        db.get(`SELECT COUNT(*) AS count FROM users`, [], async (err, row) => {
-            if (!err && row.count === 0) {
-                const adminPassword = await bcrypt.hash("admin123", 10);
-                const userPassword = await bcrypt.hash("user123", 10);
-
-
-                db.run(`INSERT INTO users (username, password, role) VALUES (?, ?, ?)`, ["admin", adminPassword, "admin"]);
-                db.run(`INSERT INTO users (username, password, role) VALUES (?, ?, ?)`, ["employee", userPassword, "user"]);
-                console.log("Default accounts initialized: admin / admin123, employee / user123");
-            }
-        });
-    });
-}
+// Database: using SQL Server via ./db.js (no local SQLite initialization)
 
 
 
@@ -159,25 +96,20 @@ function requireAdmin(req, res, next) {
 
 
 // Login
-app.post("/api/login", (req, res) => {
+app.post("/api/login", async (req, res) => {
     const { username, password } = req.body;
-
 
     if (!username || !password) {
         return res.status(400).json({ error: "Username and password are required." });
     }
 
-
-    db.get(`SELECT * FROM users WHERE username = ?`, [username.trim()], async (err, user) => {
-        if (err) return res.status(500).json({ error: "Database authentication error." });
+    try {
+        const result = await db.query('SELECT * FROM users WHERE username = ?', [username.trim()]);
+        const user = result.recordset && result.recordset[0];
         if (!user) return res.status(401).json({ error: "Invalid username or password." });
 
-
         const validPassword = await bcrypt.compare(password, user.password);
-        if (!validPassword) {
-            return res.status(401).json({ error: "Invalid username or password." });
-        }
-
+        if (!validPassword) return res.status(401).json({ error: "Invalid username or password." });
 
         const token = jwt.sign(
             { id: user.id, username: user.username, role: user.role },
@@ -185,16 +117,17 @@ app.post("/api/login", (req, res) => {
             { expiresIn: "8h" }
         );
 
-
         res.cookie("auth_token", token, {
             httpOnly: true,
             sameSite: "strict",
             maxAge: 8 * 60 * 60 * 1000 // 8 hours
         });
 
-
         res.json({ message: "Login successful", username: user.username, role: user.role });
-    });
+    } catch (err) {
+        console.error('Database authentication error:', err);
+        return res.status(500).json({ error: "Database authentication error." });
+    }
 });
 
 
@@ -219,22 +152,15 @@ app.post("/register", async (req, res) => {
         const hashedPassword = await bcrypt.hash(password, 10);
         const userRole = role === "admin" ? "admin" : "user"; // Default to standard user
 
-
-        db.run(
-            `INSERT INTO users (username, password, role) VALUES (?, ?, ?)`,
-            [username.trim(), hashedPassword, userRole],
-            function (err) {
-                if (err) {
-                    if (err.message.includes("UNIQUE")) {
-                        return res.status(400).json({ error: "Username already exists." });
-                    }
-                    return res.status(500).json({ error: "Failed to create account." });
-                }
-                res.status(201).json({ message: "Account created successfully!" });
-            }
-        );
+        await db.query(`INSERT INTO users (username, password, role) VALUES (?, ?, ?)`, [username.trim(), hashedPassword, userRole]);
+        res.status(201).json({ message: "Account created successfully!" });
     } catch (err) {
-        res.status(500).json({ error: "Server error creating account." });
+        console.error('Error creating account:', err);
+        const msg = err && err.message ? err.message : '';
+        if (msg.includes('UNIQUE') || msg.includes('duplicate') || msg.includes('Violation')) {
+            return res.status(400).json({ error: "Username already exists." });
+        }
+        res.status(500).json({ error: "Failed to create account." });
     }
 });
 
@@ -254,20 +180,30 @@ app.post("/logout", (req, res) => {
 
 // Get all registered users (Admin only)
 app.get("/api/admin/users", requireAdmin, (req, res) => {
-    db.all(`SELECT id, username, role, createdAt FROM users ORDER BY username ASC`, [], (err, rows) => {
-        if (err) return res.status(500).json({ error: "Could not fetch users list." });
-        res.json(rows);
-    });
+    (async () => {
+        try {
+            const result = await db.query('SELECT id, username, role, createdAt FROM users ORDER BY username ASC');
+            res.json(result.recordset);
+        } catch (err) {
+            console.error('Could not fetch users list:', err);
+            res.status(500).json({ error: "Could not fetch users list." });
+        }
+    })();
 });
 
 
 
 // Get subscribers list (Admin only)
 app.get("/api/admin/subscribers", requireAdmin, (req, res) => {
-    db.all(`SELECT * FROM subscribers ORDER BY subscribedAt DESC`, [], (err, rows) => {
-        if (err) return res.status(500).json({ error: "Could not fetch subscribers." });
-        res.json(rows);
-    });
+    (async () => {
+        try {
+            const result = await db.query('SELECT * FROM subscribers ORDER BY subscribedAt DESC');
+            res.json(result.recordset);
+        } catch (err) {
+            console.error('Could not fetch subscribers:', err);
+            res.status(500).json({ error: "Could not fetch subscribers." });
+        }
+    })();
 });
 
 
@@ -283,27 +219,32 @@ app.post("/api/subscribe", (req, res) => {
     if (!phone || phone.trim().length < 10) {
         return res.status(400).json({ error: "Please enter a valid phone number." });
     }
-
-
-    db.run(`INSERT INTO subscribers (phone) VALUES (?)`, [phone.trim()], function (err) {
-        if (err) {
-            if (err.message.includes("UNIQUE")) {
+    (async () => {
+        try {
+            await db.query('INSERT INTO subscribers (phone) VALUES (?)', [phone.trim()]);
+            res.status(201).json({ message: "Successfully signed up for text alerts!" });
+        } catch (err) {
+            console.error('Failed to enroll subscription:', err);
+            const msg = err && err.message ? err.message : '';
+            if (msg.includes('UNIQUE') || msg.includes('duplicate') || msg.includes('Violation')) {
                 return res.status(400).json({ error: "Phone number is already subscribed." });
             }
             return res.status(500).json({ error: "Failed to enroll subscription." });
         }
-        res.status(201).json({ message: "Successfully signed up for text alerts!" });
-    });
+    })();
 });
 
 
 app.get("/api/subscribers", (req, res) => {
-    db.all("SELECT * FROM subscribers ORDER BY subscribedAt DESC", [], (err, rows) => {
-        if (err) {
+    (async () => {
+        try {
+            const result = await db.query('SELECT * FROM subscribers ORDER BY subscribedAt DESC');
+            res.json(result.recordset);
+        } catch (err) {
+            console.error('Error fetching subscribers:', err);
             return res.status(500).json({ error: err.message });
         }
-        res.json(rows);
-    });
+    })();
 });
 
 
@@ -320,18 +261,20 @@ app.post("/api/save-subscription", (req, res) => {
 
     const { endpoint, keys } = subscription;
 
-
-    db.run(
-        `INSERT OR REPLACE INTO push_subscriptions (endpoint, p256dh, auth) VALUES (?, ?, ?)`,
-        [endpoint, keys.p256dh, keys.auth],
-        function (err) {
-            if (err) {
-                console.error("Error saving push subscription:", err.message);
-                return res.status(500).json({ error: "Failed to save push subscription." });
+    (async () => {
+        try {
+            // Try update first
+            const update = await db.query('UPDATE push_subscriptions SET p256dh = ?, auth = ? WHERE endpoint = ?', [keys.p256dh, keys.auth, endpoint]);
+            const rowsAffected = update.rowsAffected && update.rowsAffected[0] ? update.rowsAffected[0] : 0;
+            if (rowsAffected === 0) {
+                await db.query('INSERT INTO push_subscriptions (endpoint, p256dh, auth) VALUES (?, ?, ?)', [endpoint, keys.p256dh, keys.auth]);
             }
             res.status(201).json({ success: true, message: "Push subscription saved successfully." });
+        } catch (err) {
+            console.error("Error saving push subscription:", err);
+            return res.status(500).json({ error: "Failed to save push subscription." });
         }
-    );
+    })();
 });
 
 
@@ -352,18 +295,13 @@ app.post("/api/send-notification", async (req, res) => {
     });
 
 
-    // Retrieve all active browser push subscriptions from SQLite
-    db.all(`SELECT * FROM push_subscriptions`, [], async (err, subscriptions) => {
-        if (err) {
-            console.error("Error fetching push subscriptions:", err.message);
-            return res.status(500).json({ error: "Database error fetching subscriptions." });
-        }
-
+    try {
+        const result = await db.query('SELECT * FROM push_subscriptions');
+        const subscriptions = result.recordset || [];
 
         if (subscriptions.length === 0) {
             return res.json({ success: true, message: "No active push subscribers to notify." });
         }
-
 
         const dispatchPromises = subscriptions.map((subRow) => {
             const pushSubscription = {
@@ -374,21 +312,26 @@ app.post("/api/send-notification", async (req, res) => {
                 }
             };
 
-
-            return webpush.sendNotification(pushSubscription, payload).catch((pushErr) => {
-                // If subscription has expired or is invalid (404/410), delete it from SQLite
-                if (pushErr.statusCode === 410 || pushErr.statusCode === 404) {
-                    db.run(`DELETE FROM push_subscriptions WHERE endpoint = ?`, [subRow.endpoint]);
+            return webpush.sendNotification(pushSubscription, payload).catch(async (pushErr) => {
+                // If subscription has expired or is invalid (404/410), delete it from SQL Server
+                if (pushErr && (pushErr.statusCode === 410 || pushErr.statusCode === 404)) {
+                    try {
+                        await db.query('DELETE FROM push_subscriptions WHERE endpoint = ?', [subRow.endpoint]);
+                    } catch (delErr) {
+                        console.error('Failed to delete expired subscription:', delErr);
+                    }
                 } else {
                     console.error("WebPush delivery error:", pushErr);
                 }
             });
         });
 
-
         await Promise.all(dispatchPromises);
         return res.json({ success: true, message: `Notification sent to ${subscriptions.length} subscriber device(s)!` });
-    });
+    } catch (err) {
+        console.error('Database error fetching subscriptions.', err);
+        return res.status(500).json({ error: 'Database error fetching subscriptions.' });
+    }
 });
 
 
@@ -410,13 +353,8 @@ app.get('/api/restaurants', async (req, res) => {
     console.log('[restaurants] executing query:', query);
 
     try {
-        console.log('[restaurants] connecting to SQL Server...');
-        await sql.connect(sqlConfig);
-        console.log('[restaurants] SQL Server connection established');
-
-        const result = await sql.query(query);
+        const result = await db.query(query);
         console.log(`[restaurants] query completed, rows=${result.recordset.length}`);
-
         res.json(result.recordset);
     } catch (err) {
         console.error('[restaurants] SQL Server error fetching restaurants:', err);
@@ -431,12 +369,7 @@ app.get('/api/restaurants', async (req, res) => {
             error: 'Database error fetching restaurants.'
         });
     } finally {
-        try {
-            await sql.close();
-            console.log('[restaurants] SQL Server connection closed');
-        } catch (closeErr) {
-            console.error('[restaurants] error closing SQL Server connection:', closeErr);
-        }
+        // connection pool is managed in db.js
     }
 });
 
@@ -454,55 +387,14 @@ app.get('/route-check', (req, res) => {
 console.log('ABOUT TO REGISTER SQL TEST ROUTE');
 console.log('SQL TEST ROUTE REGISTERED');
 app.get('/api/sql-test', async (req, res) => {
-    const serverOptions = [
-        'localhost',
-        '127.0.0.1',
-        'localhost,1433',
-        'localhost\\MSSQLSERVER'
-    ];
-
-    const query = `SELECT @@SERVERNAME AS ServerName, DB_NAME() AS DatabaseName`;
-    let lastError = null;
-
-    for (const serverValue of serverOptions) {
-        const testConfig = {
-            ...sqlConfig,
-            server: serverValue,
-            port: 1433,
-            options: {
-                ...sqlConfig.options,
-                trustServerCertificate: true,
-                encrypt: false
-            }
-        };
-
-        console.log(`[sql-test] attempting SQL Server connection using: ${serverValue}`);
-
-        try {
-            await sql.connect(testConfig);
-            console.log(`[sql-test] connected successfully using: ${serverValue}`);
-
-            const result = await sql.query(query);
-            console.log('[sql-test] query result:', result.recordset);
-
-            res.json({
-                server: serverValue,
-                data: result.recordset
-            });
-            return;
-        } catch (err) {
-            lastError = err;
-            console.error(`[sql-test] connection attempt failed for ${serverValue}:`, err);
-            try {
-                await sql.close();
-            } catch (closeErr) {
-                console.error('[sql-test] error closing SQL connection after failed attempt:', closeErr);
-            }
-        }
+    try {
+        const queryText = `SELECT @@SERVERNAME AS ServerName, DB_NAME() AS DatabaseName`;
+        const result = await db.query(queryText);
+        res.json({ server: 'configured', data: result.recordset });
+    } catch (err) {
+        console.error('[sql-test] error:', err);
+        res.status(500).json({ error: err.message || 'SQL test failed' });
     }
-
-    const errorMessage = lastError ? lastError.message : 'Unknown SQL Server connection error';
-    res.status(500).json({ error: errorMessage });
 });
 console.log('SQL TEST ROUTE REGISTRATION COMPLETE');
 
@@ -547,4 +439,15 @@ process.on('uncaughtException', (err) => {
 
 process.on('unhandledRejection', (err) => {
     console.error('UNHANDLED REJECTION:', err);
+});
+
+// Quick test endpoint to return top 5 restaurants
+app.get('/test-sql', async (req, res) => {
+    try {
+        const result = await db.query('SELECT TOP 5 * FROM restaurants');
+        res.json(result.recordset);
+    } catch (err) {
+        console.error('test-sql error:', err);
+        res.status(500).json({ error: err.message || 'SQL test error' });
+    }
 });
