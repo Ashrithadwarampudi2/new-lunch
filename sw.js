@@ -2,7 +2,7 @@
 self.addEventListener('push', (event) => {
   const data = event.data ? event.data.json() : {};
 
-  const title = data.title || '🍱 Commvault Lunch Update';
+  const title = data.title || ' Commvault Lunch Update';
   const options = {
     body: data.message || 'A new lunch update has been posted!',
     icon: 'images/images/commvault-logo.png',

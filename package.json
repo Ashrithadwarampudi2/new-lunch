@@ -16,15 +16,8 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
-    "@supabase/supabase-js": "^2.110.9",
-    "bcrypt": "^6.0.0",
-    "bcryptjs": "^3.0.3",
-    "cookie-parser": "^1.4.7",
     "express": "^5.2.1",
-    "express-session": "^1.19.0",
-    "jsonwebtoken": "^9.0.3",
     "mssql": "^12.7.0",
-    "sqlite3": "^6.0.1",
     "web-push": "^3.6.7"
   }
 }

@@ -144,25 +144,23 @@
 
 
           try {
-            // Direct insertion into Supabase
-            const { data, error } = await db
-              .from('contact_messages')
-              .insert([
-                {
-                  name: formData.get("name"),
-                  email: formData.get("email"),
-                  message: formData.get("message"),
-                  status: 'Pending'
-                }
-              ]);
+            const response = await fetch('/api/contact-messages', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                name: formData.get("name"),
+                email: formData.get("email"),
+                message: formData.get("message")
+              })
+            });
+            const data = await response.json();
 
-
-            if (error) {
-              console.error("Supabase Error:", error);
-              showContactStatus("Failed to submit contact form to database.", true);
+            if (!response.ok) {
+              console.error("Contact API Error:", data);
+              showContactStatus(data.error || "Failed to submit contact form.", true);
             } else {
               contactForm.reset();
-              showContactStatus("Your message was sent successfully.");
+              showContactStatus(data.message || "Your message was sent successfully.");
               const successModal = new bootstrap.Modal(
                 document.getElementById("contactSuccessModal")
               );

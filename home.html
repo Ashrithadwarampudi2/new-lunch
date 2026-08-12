@@ -13,7 +13,7 @@
 
 <body>
 
-    <div id="employeeWelcome" style="display: none;"></div>
+    <!-- employeeWelcome removed per request -->
 
     <div class="modal fade" id="preferenceModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
@@ -92,12 +92,7 @@
                 adminLink.style.display = "block";
             }
 
-            const welcomeBanner = document.getElementById("employeeWelcome");
-            if (welcomeBanner) {
-                const roleLabel = data.role === "admin" ? "Admin" : "Member";
-                welcomeBanner.innerHTML = `<div class="container py-3"><div class="alert alert-info mb-0 rounded-pill d-inline-block px-4">Welcome, ${data.username}! You are signed in as ${roleLabel}.</div></div>`;
-                welcomeBanner.style.display = "block";
-            }
+            // employee welcome UI removed; no banner shown for guests or users.
 
             if (authMessage) {
                 authMessage.style.display = "none";
@@ -107,12 +102,6 @@
             const storedRole = localStorage.getItem("userRole");
 
             if (storedUsername && storedRole) {
-                const welcomeBanner = document.getElementById("employeeWelcome");
-                if (welcomeBanner) {
-                    const roleLabel = storedRole === "admin" ? "Admin" : "Member";
-                    welcomeBanner.innerHTML = `<div class="container py-3"><div class="alert alert-info mb-0 rounded-pill d-inline-block px-4">Welcome, ${storedUsername}! You are signed in as ${roleLabel}.</div></div>`;
-                    welcomeBanner.style.display = "block";
-                }
                 const adminLink = document.getElementById("adminLink");
                 if (adminLink && storedRole === "admin") {
                     adminLink.style.display = "block";
@@ -123,9 +112,9 @@
                 return;
             }
 
-            // Secure Redirect: If not logged in, clear local cache and boot to login
-            localStorage.clear();
-            window.location.href = "login.html";
+            if (authMessage) {
+                authMessage.style.display = "none";
+            }
         }
     }
 
@@ -137,7 +126,7 @@
         }
 
         localStorage.clear();
-        window.location.href = "login.html";
+        window.location.href = "home.html";
     }
 
     ensureAuth();

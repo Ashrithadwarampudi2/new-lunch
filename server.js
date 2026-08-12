@@ -3,16 +3,14 @@
 // ==========================================
 const express = require("express");
 const path = require("path");
-const cookieParser = require("cookie-parser");
-const bcrypt = require("bcryptjs");
-const jwt = require("jsonwebtoken");
+// authentication removed temporarily for SSO integration
+// auth-related packages were removed from runtime usage during SSO migration
 const webpush = require("web-push");
 const db = require('./db');
 
 
 const app = express();
 const PORT = 4000;
-const JWT_SECRET = process.env.JWT_SECRET || "commvault-portal-secret-key-2026";
 
 // ==========================================
 // VAPID & WEB-PUSH CONFIGURATION
@@ -35,7 +33,6 @@ webpush.setVapidDetails(
 // ==========================================
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(cookieParser());
 app.use(express.static(__dirname));
 
 
@@ -44,36 +41,31 @@ app.use(express.static(__dirname));
 
 
 
-// ==========================================
-// AUTHENTICATION MIDDLEWARE
-// ==========================================
+// Authentication temporarily disabled so the app can be used without login.
+// `authenticateToken` will attach a default guest user to requests.
 function authenticateToken(req, res, next) {
-    const token = req.cookies.auth_token;
-    if (!token) {
-        return res.status(401).json({ error: "Unauthorized access. Please log in." });
-    }
-
-
-    jwt.verify(token, JWT_SECRET, (err, decodedUser) => {
-        if (err) {
-            return res.status(403).json({ error: "Invalid or expired session token." });
-        }
-        req.user = decodedUser;
-        next();
-    });
+    req.user = { username: "Guest", role: "user" };
+    next();
 }
-
 
 function requireAdmin(req, res, next) {
-    authenticateToken(req, res, () => {
-        if (req.user && req.user.role === "admin") {
-            next();
-        } else {
-            res.status(403).json({ error: "Forbidden: Admin privileges required." });
-        }
-    });
+    // Allow access during SSO migration. Admin-restrictions should be
+    // re-applied when SSO is integrated.
+    next();
 }
 
+async function tableExists(tableName) {
+    try {
+        const result = await db.query(
+            "SELECT 1 FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = 'dbo' AND TABLE_NAME = ?",
+            [tableName]
+        );
+        return result.recordset && result.recordset.length > 0;
+    } catch (err) {
+        console.error('[tableExists] error checking table', tableName, err);
+        return false;
+    }
+}
 
 
 // ==========================================
@@ -81,86 +73,41 @@ function requireAdmin(req, res, next) {
 // ==========================================
 
 
-// Login
-app.post("/api/login", async (req, res) => {
-    const { username, password } = req.body;
-
-    if (!username || !password) {
-        return res.status(400).json({ error: "Username and password are required." });
-    }
-
-    try {
-        const result = await db.query('SELECT * FROM users WHERE username = ?', [username.trim()]);
-        const user = result.recordset && result.recordset[0];
-        if (!user) return res.status(401).json({ error: "Invalid username or password." });
-
-        const validPassword = await bcrypt.compare(password, user.password);
-        if (!validPassword) return res.status(401).json({ error: "Invalid username or password." });
-
-        const token = jwt.sign(
-            { id: user.id, username: user.username, role: user.role },
-            JWT_SECRET,
-            { expiresIn: "8h" }
-        );
-
-        res.cookie("auth_token", token, {
-            httpOnly: true,
-            sameSite: "strict",
-            maxAge: 8 * 60 * 60 * 1000 // 8 hours
-        });
-
-        res.json({ message: "Login successful", username: user.username, role: user.role });
-    } catch (err) {
-        console.error('[login] SQL Server error fetching user:', err);
-        return res.status(500).json({
-            error: err.message,
-            code: err.code,
-            originalError: err.originalError
-        });
-    }
-});
+// NOTE: /api/login removed while SSO integration is prepared.
 
 
-// Check Current User Authentication Status
+// Check Current User Authentication Status (returns a guest user while auth is disabled)
 app.get("/api/auth/me", authenticateToken, (req, res) => {
     res.json({ username: req.user.username, role: req.user.role });
 });
 
 
 
-// Register New Account Endpoint
-app.post("/register", async (req, res) => {
-    const { username, password, role } = req.body;
+// NOTE: Registration endpoint removed while auth is disabled.
 
 
-    if (!username || !password) {
-        return res.status(400).json({ error: "Username and password are required." });
-    }
-
-
-    try {
-        const hashedPassword = await bcrypt.hash(password, 10);
-        const userRole = role === "admin" ? "admin" : "user"; // Default to standard user
-
-        await db.query(`INSERT INTO users (username, password, role) VALUES (?, ?, ?)`, [username.trim(), hashedPassword, userRole]);
-        res.status(201).json({ message: "Account created successfully!" });
-    } catch (err) {
-        console.error('Error creating account:', err);
-        const msg = err && err.message ? err.message : '';
-        if (msg.includes('UNIQUE') || msg.includes('duplicate') || msg.includes('Violation')) {
-            return res.status(400).json({ error: "Username already exists." });
-        }
-        res.status(500).json({ error: "Failed to create account." });
-    }
-});
-
-
-// Logout Endpoint
+// Logout Endpoint (keeps behavior but no longer depends on cookie parsing)
 app.post("/logout", (req, res) => {
-    res.clearCookie("auth_token");
+    try {
+        res.clearCookie("auth_token");
+    } catch (e) { }
     res.json({ message: "Logged out successfully" });
 });
 
+
+// Admin user inspection helper routes may still exist for migration diagnostics
+app.get("/api/admin/users", async (req, res) => {
+    try {
+        if (!await tableExists('users')) {
+            return res.status(404).json({ error: "users table not found" });
+        }
+        const result = await db.query('SELECT id, username, role, createdAt FROM dbo.users ORDER BY username ASC');
+        res.json(result.recordset);
+    } catch (err) {
+        console.error('Could not fetch users list:', err);
+        res.status(500).json({ error: "Could not fetch users list." });
+    }
+});
 
 
 // ==========================================
@@ -168,23 +115,9 @@ app.post("/logout", (req, res) => {
 // ==========================================
 
 
-// Get all registered users (Admin only)
-app.get("/api/admin/users", requireAdmin, (req, res) => {
-    (async () => {
-        try {
-            const result = await db.query('SELECT id, username, role, createdAt FROM users ORDER BY username ASC');
-            res.json(result.recordset);
-        } catch (err) {
-            console.error('Could not fetch users list:', err);
-            res.status(500).json({ error: "Could not fetch users list." });
-        }
-    })();
-});
 
-
-
-// Get subscribers list (Admin only)
-app.get("/api/admin/subscribers", requireAdmin, (req, res) => {
+// Get subscribers list (Admin view - temporarily open)
+app.get("/api/admin/subscribers", (req, res) => {
     (async () => {
         try {
             const result = await db.query('SELECT * FROM subscribers ORDER BY subscribedAt DESC');
@@ -225,22 +158,23 @@ app.post("/api/subscribe", (req, res) => {
 });
 
 
-app.get("/api/subscribers", (req, res) => {
-    (async () => {
-        try {
-            const result = await db.query('SELECT * FROM subscribers ORDER BY subscribedAt DESC');
-            res.json(result.recordset);
-        } catch (err) {
-            console.error('Error fetching subscribers:', err);
-            return res.status(500).json({ error: err.message });
+app.get("/api/subscribers", async (req, res) => {
+    try {
+        if (!await tableExists('subscribers')) {
+            return res.json([]);
         }
-    })();
+        const result = await db.query('SELECT * FROM dbo.subscribers ORDER BY subscribedAt DESC');
+        res.json(result.recordset);
+    } catch (err) {
+        console.error('Error fetching subscribers:', err);
+        return res.status(500).json({ error: err.message });
+    }
 });
 
 
 
 // Browser Web Push Subscription Endpoint (Called by home.html)
-app.post("/api/save-subscription", (req, res) => {
+app.post("/api/save-subscription", async (req, res) => {
     const subscription = req.body;
 
 
@@ -248,23 +182,23 @@ app.post("/api/save-subscription", (req, res) => {
         return res.status(400).json({ error: "Invalid subscription payload." });
     }
 
+    if (!await tableExists('push_subscriptions')) {
+        return res.status(500).json({ error: 'Push notification storage is not configured.' });
+    }
 
     const { endpoint, keys } = subscription;
 
-    (async () => {
-        try {
-            // Try update first
-            const update = await db.query('UPDATE push_subscriptions SET p256dh = ?, auth = ? WHERE endpoint = ?', [keys.p256dh, keys.auth, endpoint]);
-            const rowsAffected = update.rowsAffected && update.rowsAffected[0] ? update.rowsAffected[0] : 0;
-            if (rowsAffected === 0) {
-                await db.query('INSERT INTO push_subscriptions (endpoint, p256dh, auth) VALUES (?, ?, ?)', [endpoint, keys.p256dh, keys.auth]);
-            }
-            res.status(201).json({ success: true, message: "Push subscription saved successfully." });
-        } catch (err) {
-            console.error("Error saving push subscription:", err);
-            return res.status(500).json({ error: "Failed to save push subscription." });
+    try {
+        const update = await db.query('UPDATE dbo.push_subscriptions SET p256dh = ?, auth = ? WHERE endpoint = ?', [keys.p256dh, keys.auth, endpoint]);
+        const rowsAffected = update.rowsAffected && update.rowsAffected[0] ? update.rowsAffected[0] : 0;
+        if (rowsAffected === 0) {
+            await db.query('INSERT INTO dbo.push_subscriptions (endpoint, p256dh, auth) VALUES (?, ?, ?)', [endpoint, keys.p256dh, keys.auth]);
         }
-    })();
+        res.status(201).json({ success: true, message: "Push subscription saved successfully." });
+    } catch (err) {
+        console.error("Error saving push subscription:", err);
+        return res.status(500).json({ error: "Failed to save push subscription." });
+    }
 });
 
 
@@ -276,6 +210,10 @@ app.post("/api/send-notification", async (req, res) => {
 
     if (!message || message.trim() === "") {
         return res.status(400).json({ error: "Notification message is required." });
+    }
+
+    if (!await tableExists('push_subscriptions')) {
+        return res.status(500).json({ error: 'Push notification storage is not configured.' });
     }
 
 
@@ -333,6 +271,130 @@ app.get('/test', (req, res) => {
     res.send('test works');
 });
 console.log("Restaurants route loaded");
+
+app.post('/api/orders', async (req, res) => {
+    const { username = 'Anonymous', monday, tuesday, wednesday, thursday, bagels, bubbakoos, icecream } = req.body;
+
+    try {
+        await db.query(
+            'INSERT INTO dbo.lunch_orders (username, monday, tuesday, wednesday, thursday, bagels, Friday, icecream, submitted_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, GETDATE())',
+            [username, monday || null, tuesday || null, wednesday || null, thursday || null, bagels || null, bubbakoos || null, icecream || null]
+        );
+        res.status(201).json({ message: 'Order submitted successfully.' });
+    } catch (err) {
+        console.error('[orders] SQL Server error inserting order:', err);
+        res.status(500).json({ error: 'Database error submitting order.' });
+    }
+});
+
+app.get('/api/orders', async (req, res) => {
+    try {
+        if (!await tableExists('lunch_orders')) {
+            return res.json([]);
+        }
+
+        const result = await db.query(
+            'SELECT * FROM dbo.lunch_orders ORDER BY submitted_at DESC'
+        );
+
+        res.json(result.recordset);
+    } catch (err) {
+        console.error('[orders] SQL Server error fetching orders:', err);
+        res.status(500).json({ error: 'Database error fetching orders.' });
+    }
+});
+
+app.get('/api/contact-messages', async (req, res) => {
+    try {
+        if (!await tableExists('contact_messages')) {
+            return res.json([]);
+        }
+        const result = await db.query('SELECT * FROM dbo.contact_messages ORDER BY created_at DESC');
+        res.json(result.recordset);
+    } catch (err) {
+        console.error('[contact-messages] SQL Server error fetching messages:', err);
+        res.status(500).json({ error: 'Database error fetching contact messages.' });
+    }
+});
+
+app.post('/api/contact-messages', async (req, res) => {
+    const { name, email, message } = req.body;
+
+    if (!name || !email || !message) {
+        return res.status(400).json({ error: 'Name, email, and message are required.' });
+    }
+
+    try {
+        await db.query(
+            'INSERT INTO dbo.contact_messages (name, email, message, status, created_at) VALUES (?, ?, ?, ?, GETDATE())',
+            [name, email, message, 'Pending']
+        );
+        res.status(201).json({ message: 'Message submitted successfully.' });
+    } catch (err) {
+        console.error('[contact-messages] SQL Server error inserting message:', err);
+        res.status(500).json({ error: 'Database error submitting contact message.' });
+    }
+});
+
+app.put('/api/contact-messages/:id/responded', async (req, res) => {
+    const id = Number(req.params.id);
+    if (Number.isNaN(id)) {
+        return res.status(400).json({ error: 'Invalid message ID.' });
+    }
+
+    try {
+        const result = await db.query('UPDATE dbo.contact_messages SET status = ? WHERE id = ?', ['Responded', id]);
+        if (!(result.rowsAffected && result.rowsAffected[0] > 0)) {
+            return res.status(404).json({ error: 'Message not found.' });
+        }
+        res.json({ message: 'Message marked as responded.' });
+    } catch (err) {
+        console.error('[contact-messages] SQL Server error updating message:', err);
+        res.status(500).json({ error: 'Database error updating contact message.' });
+    }
+});
+
+app.get('/api/weekly-menu', async (req, res) => {
+    try {
+        if (!await tableExists('weekly_menus')) {
+            return res.json([]);
+        }
+        const result = await db.query('SELECT * FROM dbo.weekly_menus ORDER BY week_start_date DESC, id DESC');
+        res.json(result.recordset);
+    } catch (err) {
+        console.error('[weekly-menu] SQL Server error fetching weekly menu:', err);
+        res.status(500).json({ error: 'Database error fetching weekly menu.' });
+    }
+});
+
+app.post('/api/weekly-menu', async (req, res) => {
+    const schedule = req.body && req.body.schedule;
+    if (!Array.isArray(schedule)) {
+        return res.status(400).json({ error: 'Schedule array is required.' });
+    }
+
+    const now = new Date();
+    const mondayDate = new Date(now);
+    mondayDate.setDate(mondayDate.getDate() - ((mondayDate.getDay() + 6) % 7));
+
+    if (!await tableExists('weekly_menus')) {
+        return res.status(500).json({ error: 'weekly_menus table is not configured.' });
+    }
+
+    try {
+        for (const item of schedule) {
+            await db.query(
+                'INSERT INTO dbo.weekly_menus (week_start_date, day_of_week, meal_id, is_approved, restaurant_name, meal_type) VALUES (?, ?, ?, ?, ?, ?)',
+                [mondayDate, item.day_of_week || null, item.meal_id || null, 1, item.restaurant_name || null, item.meal_type || null]
+            );
+        }
+        res.status(201).json({ message: 'Weekly menu saved successfully.' });
+    } catch (err) {
+        console.error('[weekly-menu] SQL Server error saving weekly menu:', err);
+        res.status(500).json({ error: 'Database error saving weekly menu.' });
+    }
+});
+
 app.get('/api/restaurants', async (req, res) => {
     const activeOnly = req.query.active === 'true';
 
@@ -389,7 +451,7 @@ app.get('/api/sql-test', async (req, res) => {
 console.log('SQL TEST ROUTE REGISTRATION COMPLETE');
 
 app.get("/", (req, res) => {
-    res.sendFile(path.join(__dirname, "login.html"));
+    res.sendFile(path.join(__dirname, "home.html"));
 });
 
 console.log("TEST ROUTE LOADED");
