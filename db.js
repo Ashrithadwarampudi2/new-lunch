@@ -3,7 +3,7 @@ const sql = require('mssql');
 const config = {
     user: 'sa',
     password: 'Commvault!12',
-    server: '127.0.0.1',
+    server: 'localhost',
     port: 1433,
     database: 'LunchPortal',
     options: {
@@ -12,21 +12,48 @@ const config = {
     }
 };
 
-const pool = new sql.ConnectionPool(config);
-const poolConnect = pool.connect().catch((err) => {
-    console.error('DB pool connection failed:', err);
-});
+let pool = null;
+let poolConnect = null;
 
-console.log('LOADED DB CONFIG:');
-console.log({
-    server: config.server,
-    port: config.port,
-    database: config.database,
-    user: config.user
-});
+function createPool() {
+    pool = new sql.ConnectionPool(config);
+
+    pool.on('error', err => {
+        console.error('❌ SQL POOL ERROR:', err);
+    });
+
+    poolConnect = pool.connect()
+        .then(() => {
+            console.log('✅ SQL SERVER CONNECTED');
+            return pool;
+        })
+        .catch(err => {
+            console.error('❌ DB pool connection failed:', err);
+            pool = null;
+            poolConnect = null;
+            throw err;
+        });
+
+    return poolConnect;
+}
+
+async function getPool() {
+    if (pool && pool.connected) {
+        return pool;
+    }
+
+    if (poolConnect) {
+        await poolConnect;
+        if (pool && pool.connected) {
+            return pool;
+        }
+    }
+
+    return createPool();
+}
 
 async function query(text, params = []) {
-    await poolConnect;
+    const activePool = await getPool();
 
     let idx = 0;
     const transformed = text.replace(/\?/g, () => `@p${++idx}`);
@@ -35,15 +62,16 @@ async function query(text, params = []) {
         server: config.server,
         port: config.port,
         database: config.database,
-        query: transformed
+        query: transformed,
+        params
     });
 
-    const request = pool.request();
+    const request = activePool.request();
     params.forEach((p, i) => {
         request.input(`p${i + 1}`, p);
     });
 
-    return await request.query(transformed);
+    return request.query(transformed);
 }
 
-module.exports = { query, config, pool };
+module.exports = { query, config, getPool, pool };

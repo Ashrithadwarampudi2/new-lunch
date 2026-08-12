@@ -304,19 +304,31 @@ app.get('/api/orders', async (req, res) => {
     }
 });
 
-app.get('/api/contact-messages', async (req, res) => {
+app.get('/api/sql-test', async (req, res) => {
     try {
-        if (!await tableExists('contact_messages')) {
-            return res.json([]);
-        }
-        const result = await db.query('SELECT * FROM dbo.contact_messages ORDER BY created_at DESC');
+
+        console.log('POOL STATE:', {
+            connected: db.pool.connected,
+            connecting: db.pool.connecting
+        });
+
+        const result = await db.query(
+            'SELECT @@SERVERNAME AS ServerName, DB_NAME() AS DatabaseName'
+        );
+
         res.json(result.recordset);
+
     } catch (err) {
-        console.error('[contact-messages] SQL Server error fetching messages:', err);
-        res.status(500).json({ error: 'Database error fetching contact messages.' });
+
+        console.error('SQL TEST FULL ERROR:', err);
+
+        res.status(500).json({
+            message: err.message,
+            name: err.name,
+            code: err.code
+        });
     }
 });
-
 app.post('/api/contact-messages', async (req, res) => {
     const { name, email, message } = req.body;
 
@@ -440,8 +452,15 @@ console.log('ABOUT TO REGISTER SQL TEST ROUTE');
 console.log('SQL TEST ROUTE REGISTERED');
 app.get('/api/sql-test', async (req, res) => {
     try {
-        const queryText = `SELECT @@SERVERNAME AS ServerName, DB_NAME() AS DatabaseName`;
-        const result = await db.query(queryText);
+        console.log('POOL STATE:', {
+            connected: db.pool && db.pool.connected,
+            connecting: db.pool && db.pool.connecting
+        });
+
+        const result = await db.query(
+            'SELECT @@SERVERNAME AS ServerName, DB_NAME() AS DatabaseName'
+        );
+
         res.json({ server: 'configured', data: result.recordset });
     } catch (err) {
         console.error('[sql-test] error:', err);
@@ -475,7 +494,15 @@ logRegisteredRoutes();
 
 console.log("BOTTOM OF FILE REACHED");
 
-
+app.get('/test-direct-sql', async (req, res) => {
+    try {
+        const result = await db.query('SELECT TOP 5 * FROM dbo.lunch_orders');
+        res.json(result.recordset);
+    } catch (err) {
+        console.error('DIRECT SQL ERROR:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
 
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`Commvault Lunch Portal server running on port ${PORT}`);
