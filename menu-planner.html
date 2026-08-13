@@ -75,7 +75,7 @@
                 function getAvailableRestaurant(serviceFilter = null) {
                     return restaurants.filter(r => {
                         if (selectedRestaurants.has(r.id)) return false;
-                        if (selectedCuisines.has(r.cuisine)) return false;
+                        if (selectedCuisines.has(r.cuisine_type)) return false;
                         if (serviceFilter && r.service_type !== serviceFilter && r.service_type !== "Both") return false;
                         return true;
                     });
@@ -93,14 +93,14 @@
                         const chosen = pool[randomIndex];
 
                         selectedRestaurants.add(chosen.id);
-                        selectedCuisines.add(chosen.cuisine);
+                        selectedCuisines.add(chosen.cuisine_type);
 
                         generatedSchedule.push({
                             day_of_week: day,
                             meal_type: "Lunch",
-                            restaurant_id: chosen.id,
+                           meal_id: chosen.id,
                             restaurant_name: chosen.name,
-                            cuisine: chosen.cuisine
+                            cuisine: chosen.cuisine_type
                         });
                     }
                 });

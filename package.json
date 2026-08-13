@@ -17,6 +17,7 @@
   "type": "commonjs",
   "dependencies": {
     "express": "^5.2.1",
+    "ini": "^7.0.0",
     "mssql": "^12.7.0",
     "web-push": "^3.6.7"
   }
