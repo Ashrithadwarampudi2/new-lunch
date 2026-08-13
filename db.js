@@ -19,16 +19,16 @@ function createPool() {
     pool = new sql.ConnectionPool(config);
 
     pool.on('error', err => {
-        console.error('❌ SQL POOL ERROR:', err);
+        console.error(' SQL POOL ERROR:', err);
     });
 
     poolConnect = pool.connect()
         .then(() => {
-            console.log('✅ SQL SERVER CONNECTED');
+            console.log(' SQL SERVER CONNECTED');
             return pool;
         })
         .catch(err => {
-            console.error('❌ DB pool connection failed:', err);
+            console.error(' DB pool connection failed:', err);
             pool = null;
             poolConnect = null;
             throw err;
