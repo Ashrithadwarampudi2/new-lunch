@@ -14,6 +14,7 @@
         </div>
     </nav>
 
+
     <div class="container py-5">
         <div class="row justify-content-center">
             <div class="col-lg-10">
@@ -23,8 +24,10 @@
                    
                     <div id="plannerStatus" class="alert d-none mb-4" role="alert"></div>
 
+
                     <button class="btn btn-primary btn-lg w-100" onclick="generateMenu()">Generate Balanced Weekly Schedule</button>
                 </div>
+
 
                 <div id="generatedScheduleContainer" class="d-none">
                     <h4 class="fw-bold text-dark mb-3">Generated Menu Preview</h4>
@@ -41,41 +44,49 @@
                             <tbody id="scheduleTableBody"></tbody>
                         </table>
                     </div>
-                    <button class="btn btn-success btn-lg w-100" onclick="saveGeneratedMenu()">Approve and Publish Menu</button>
+                    <button class="btn btn-success btn-lg w-100" id="publishBtn" onclick="saveGeneratedMenu()">Approve and Publish Menu</button>
                 </div>
             </div>
         </div>
     </div>
 
+
     <script>
         let generatedSchedule = [];
 
-        // Generate Menu fetching from local Node / Express backend
+
         async function generateMenu() {
             const statusBox = document.getElementById("plannerStatus");
             statusBox.classList.remove("d-none", "alert-danger");
             statusBox.classList.add("alert-success");
             statusBox.textContent = "Loading restaurants from backend server...";
 
+
             try {
                 const response = await fetch("/api/restaurants?active=true");
-                if (!response.ok) throw new Error("Failed to load restaurants");
+                if (!response.ok) {
+                    const errData = await response.json().catch(() => ({}));
+                    throw new Error(errData.error || "Failed to load restaurants");
+                }
+
 
                 const restaurants = await response.json();
+
 
                 if (!restaurants || restaurants.length === 0) {
                     throw new Error("No active restaurants found in database.");
                 }
+
 
                 const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
                 const selectedRestaurants = new Set();
                 const selectedCuisines = new Set();
                 generatedSchedule = [];
 
-                // Filter out breakfast-only options for lunch, along with ensuring cuisine/restaurant variety
+
                 function getAvailableRestaurant(serviceFilter = null) {
                     return restaurants.filter(r => {
-                        if (r.service_type === "Breakfast") return false; // Exclude breakfast vendors from lunch
+                        if (r.service_type === "Breakfast") return false; 
                         if (selectedRestaurants.has(r.id)) return false;
                         if (selectedCuisines.has(r.cuisine_type)) return false;
                         if (serviceFilter && r.service_type !== serviceFilter && r.service_type !== "Both") return false;
@@ -83,21 +94,25 @@
                     });
                 }
 
-                // 1. Generate Monday - Friday Lunch Menu
+
                 days.forEach(day => {
                     let pool = getAvailableRestaurant();
+
 
                     if (pool.length === 0) {
                         selectedCuisines.clear();
                         pool = getAvailableRestaurant();
                     }
 
+
                     if (pool.length > 0) {
                         const randomIndex = Math.floor(Math.random() * pool.length);
                         const chosen = pool[randomIndex];
 
+
                         selectedRestaurants.add(chosen.id);
                         selectedCuisines.add(chosen.cuisine_type);
+
 
                         generatedSchedule.push({
                             day_of_week: day,
@@ -109,11 +124,13 @@
                     }
                 });
 
-                // 2. Add Separate Friday Breakfast/Bagels Entry
+
                 const breakfastOptions = restaurants.filter(r => r.service_type === "Breakfast" || r.service_type === "Both");
+
 
                 if (breakfastOptions.length > 0) {
                     const breakfastVendor = breakfastOptions[0];
+
 
                     generatedSchedule.push({
                         day_of_week: "Friday",
@@ -124,9 +141,11 @@
                     });
                 }
 
+
                 renderScheduleTable();
                 statusBox.textContent = "Weekly schedule generated successfully!";
                 document.getElementById("generatedScheduleContainer").classList.remove("d-none");
+
 
             } catch (error) {
                 console.error("Restaurant load error:", error);
@@ -135,6 +154,7 @@
                 statusBox.textContent = error.message || "Could not load restaurants.";
             }
         }
+
 
         function renderScheduleTable() {
             const tableBody = document.getElementById("scheduleTableBody");
@@ -152,27 +172,44 @@
             });
         }
 
+
         async function saveGeneratedMenu() {
+            const publishBtn = document.getElementById("publishBtn");
             const statusBox = document.getElementById("plannerStatus");
+           
+            publishBtn.disabled = true;
+            publishBtn.textContent = "Publishing Menu...";
+
+
             try {
-                const response = await fetch("/api/admin/menu", {
+                const response = await fetch("/api/weekly-menu", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ schedule: generatedSchedule })
                 });
 
+
+                const data = await response.json();
+
+
                 if (response.ok) {
-                    alert("Menu published successfully!");
+                    alert(data.message || "Menu published successfully!");
                     window.location.href = "admin-new.html";
                 } else {
-                    const err = await response.json();
-                    alert(err.error || "Failed to publish menu.");
+                    alert(data.error || "Failed to publish menu.");
+                    publishBtn.disabled = false;
+                    publishBtn.textContent = "Approve and Publish Menu";
                 }
             } catch (err) {
                 console.error("Error publishing menu:", err);
                 alert("Network error publishing menu.");
+                publishBtn.disabled = false;
+                publishBtn.textContent = "Approve and Publish Menu";
             }
         }
     </script>
 </body>
 </html>
+
+
+
