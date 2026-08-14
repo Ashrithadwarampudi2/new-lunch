@@ -117,9 +117,24 @@ async function renderWeeklyMenu() {
     }
 
     const dayOrder = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
-    const sortedMenus = [...currentWeekMenus].sort(
-      (a, b) => dayOrder.indexOf(a.day_of_week) - dayOrder.indexOf(b.day_of_week)
-    );
+    const seenDays = new Set();
+
+const uniqueMenus = currentWeekMenus.filter(menu => {
+    const key = `${menu.day_of_week}-${menu.meal_type}`;
+
+    if (seenDays.has(key)) {
+        return false;
+    }
+
+    seenDays.add(key);
+    return true;
+});
+
+const sortedMenus = uniqueMenus.sort(
+    (a, b) =>
+        dayOrder.indexOf(a.day_of_week) -
+        dayOrder.indexOf(b.day_of_week)
+);
 
     // Ticker: one line per item
     if (tickerEl) {

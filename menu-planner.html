@@ -155,7 +155,7 @@
         async function saveGeneratedMenu() {
             const statusBox = document.getElementById("plannerStatus");
             try {
-                const response = await fetch("/api/weekly-menu", {
+                const response = await fetch("/api/admin/menu", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ schedule: generatedSchedule })

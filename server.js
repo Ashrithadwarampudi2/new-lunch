@@ -510,84 +510,79 @@ app.delete("/api/admin/users/:id", requireAdmin, async (req, res) => {
 // 5. WEEKLY MENU ENDPOINTS
 // ============================================================
 
-/**
- * GET /api/weekly-menu
- * Fetch the current weekly menu (public — for menu.html display).
- */
 app.get("/api/weekly-menu", async (req, res) => {
   try {
     if (!await tableExists("weekly_menus")) {
       return res.json([]);
     }
+
     const result = await db.query(
       "SELECT * FROM dbo.weekly_menus ORDER BY week_start_date DESC, id DESC"
     );
+
     res.json(result.recordset || []);
   } catch (err) {
     console.error("[weekly-menu GET] Error:", err);
-    res.status(500).json({ error: "Database error fetching weekly menu." });
+    res.status(500).json({
+      error: "Database error fetching weekly menu."
+    });
   }
 });
 
-/**
- * POST /api/admin/menu
- * Save or update the weekly menu (admin only).
- * Accepts the admin dashboard's menu editor payload.
- */
-app.post("/api/admin/menu", requireAdmin, async (req, res) => {
-  const {
-    weekStart,
-    monday, mondayNotes,
-    tuesday, tuesdayNotes,
-    wednesday, wednesdayNotes,
-    thursday, thursdayNotes,
-    fridayBagels, fridayLunch, fridayTreat
-  } = req.body;
-
-  if (!weekStart) {
-    return res.status(400).json({ error: "weekStart date is required." });
-  }
-
-  // Build a schedule array (one item per day) matching the weekly_menus table
-  const schedule = [
-    { day_of_week: "Monday",    description: monday,       notes: mondayNotes    },
-    { day_of_week: "Tuesday",   description: tuesday,      notes: tuesdayNotes   },
-    { day_of_week: "Wednesday", description: wednesday,    notes: wednesdayNotes },
-    { day_of_week: "Thursday",  description: thursday,     notes: thursdayNotes  },
-    { day_of_week: "Friday",    description: fridayLunch,  notes: `Bagels: ${fridayBagels || "–"} | Treat: ${fridayTreat || "–"}` }
-  ];
-
+// MENU-PLANNER COMPATIBILITY ROUTE
+app.post("/api/weekly-menu", async (req, res) => {
   try {
-    if (!await tableExists("weekly_menus")) {
-      return res.status(500).json({ error: "weekly_menus table is not configured." });
+    const schedule = req.body.schedule;
+
+    if (!Array.isArray(schedule)) {
+      return res.status(400).json({
+        error: "Schedule array is required."
+      });
     }
+
+    const mondayDate = new Date();
+    mondayDate.setDate(
+      mondayDate.getDate() -
+      ((mondayDate.getDay() + 6) % 7)
+    );
 
     for (const item of schedule) {
-      // Upsert: update if row exists for this week+day, else insert
-      const existing = await db.query(
-        "SELECT id FROM dbo.weekly_menus WHERE week_start_date = ? AND day_of_week = ?",
-        [weekStart, item.day_of_week]
+      await db.query(
+        `INSERT INTO dbo.weekly_menus
+        (
+          week_start_date,
+          day_of_week,
+          meal_id,
+          is_approved,
+          restaurant_name,
+          meal_type
+        )
+        VALUES (?, ?, ?, ?, ?, ?)`,
+        [
+          mondayDate,
+          item.day_of_week,
+          item.meal_id,
+          1,
+          item.restaurant_name,
+          item.meal_type
+        ]
       );
-
-      if (existing.recordset && existing.recordset.length > 0) {
-        await db.query(
-          "UPDATE dbo.weekly_menus SET description = ?, notes = ? WHERE week_start_date = ? AND day_of_week = ?",
-          [item.description || null, item.notes || null, weekStart, item.day_of_week]
-        );
-      } else {
-        await db.query(
-          "INSERT INTO dbo.weekly_menus (week_start_date, day_of_week, description, notes) VALUES (?, ?, ?, ?)",
-          [weekStart, item.day_of_week, item.description || null, item.notes || null]
-        );
-      }
     }
 
-    res.json({ message: "Weekly menu saved successfully!" });
+    res.status(201).json({
+      success: true,
+      message: "Weekly menu published successfully."
+    });
+
   } catch (err) {
-    console.error("[admin/menu POST] Error:", err);
-    res.status(500).json({ error: "Database error saving weekly menu." });
+    console.error("[weekly-menu POST] Error:", err);
+
+    res.status(500).json({
+      error: err.message
+    });
   }
 });
+
 
 // ============================================================
 // 6. SUBSCRIBERS (Phone text alerts)
@@ -825,7 +820,7 @@ app.get("/api/sql-test", async (req, res) => {
  * GET /api/restaurants
  * Fetch all active restaurants for the menu planner.
  */
-app.get("/api/restaurants", requireAdmin, async (req, res) => {
+app.get("/api/restaurants", async (req, res) => {
   try {
     if (!await tableExists("restaurants")) {
       return res.status(404).json({ error: "restaurants table not found." });
@@ -840,9 +835,74 @@ app.get("/api/restaurants", requireAdmin, async (req, res) => {
   }
 });
 
+
+// ============================================================
+// COMPATIBILITY ROUTE FOR MENU-PLANNER.HTML
+// ============================================================
+
+app.post('/api/weekly-menu', async (req, res) => {
+    const schedule = req.body.schedule;
+
+    if (!Array.isArray(schedule)) {
+        return res.status(400).json({
+            error: 'Schedule array is required.'
+        });
+    }
+
+    try {
+
+        const mondayDate = new Date();
+        mondayDate.setDate(
+            mondayDate.getDate() -
+            ((mondayDate.getDay() + 6) % 7)
+        );
+
+        for (const item of schedule) {
+
+            await db.query(
+                `INSERT INTO dbo.weekly_menus
+                (
+                    week_start_date,
+                    day_of_week,
+                    meal_id,
+                    is_approved,
+                    restaurant_name,
+                    meal_type
+                )
+                VALUES (?, ?, ?, ?, ?, ?)`,
+                [
+                    mondayDate,
+                    item.day_of_week,
+                    item.meal_id,
+                    1,
+                    item.restaurant_name,
+                    item.meal_type
+                ]
+            );
+        }
+
+        res.status(201).json({
+            message: 'Weekly menu saved successfully.'
+        });
+
+    } catch (err) {
+
+        console.error('[weekly-menu POST]', err);
+
+        res.status(500).json({
+            error: err.message
+        });
+    }
+});
+app.get("/route-test", (req, res) => {
+  res.send("route works");
+});
+
+
 // ============================================================
 // START SERVER
 // ============================================================
 app.listen(PORT, () => {
   console.log(`Commvault Lunch Portal running on http://localhost:${PORT}`);
 });
+
