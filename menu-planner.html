@@ -72,8 +72,10 @@
                 const selectedCuisines = new Set();
                 generatedSchedule = [];
 
+                // Filter out breakfast-only options for lunch, along with ensuring cuisine/restaurant variety
                 function getAvailableRestaurant(serviceFilter = null) {
                     return restaurants.filter(r => {
+                        if (r.service_type === "Breakfast") return false; // Exclude breakfast vendors from lunch
                         if (selectedRestaurants.has(r.id)) return false;
                         if (selectedCuisines.has(r.cuisine_type)) return false;
                         if (serviceFilter && r.service_type !== serviceFilter && r.service_type !== "Both") return false;
@@ -81,10 +83,12 @@
                     });
                 }
 
+                // 1. Generate Monday - Friday Lunch Menu
                 days.forEach(day => {
                     let pool = getAvailableRestaurant();
+
                     if (pool.length === 0) {
-                        selectedCuisines.clear(); // Reset cuisine constraint if pool is exhausted
+                        selectedCuisines.clear();
                         pool = getAvailableRestaurant();
                     }
 
@@ -98,12 +102,27 @@
                         generatedSchedule.push({
                             day_of_week: day,
                             meal_type: "Lunch",
-                           meal_id: chosen.id,
+                            meal_id: chosen.id,
                             restaurant_name: chosen.name,
                             cuisine: chosen.cuisine_type
                         });
                     }
                 });
+
+                // 2. Add Separate Friday Breakfast/Bagels Entry
+                const breakfastOptions = restaurants.filter(r => r.service_type === "Breakfast" || r.service_type === "Both");
+
+                if (breakfastOptions.length > 0) {
+                    const breakfastVendor = breakfastOptions[0];
+
+                    generatedSchedule.push({
+                        day_of_week: "Friday",
+                        meal_type: "Breakfast",
+                        meal_id: breakfastVendor.id,
+                        restaurant_name: breakfastVendor.name,
+                        cuisine: breakfastVendor.cuisine_type
+                    });
+                }
 
                 renderScheduleTable();
                 statusBox.textContent = "Weekly schedule generated successfully!";
@@ -122,9 +141,10 @@
             tableBody.innerHTML = "";
             generatedSchedule.forEach(item => {
                 const row = document.createElement("tr");
+                const badgeColor = item.meal_type === "Breakfast" ? "bg-warning text-dark" : "bg-primary";
                 row.innerHTML = `
                     <td class="fw-bold">${item.day_of_week}</td>
-                    <td><span class="badge bg-primary">${item.meal_type}</span></td>
+                    <td><span class="badge ${badgeColor}">${item.meal_type}</span></td>
                     <td class="fw-semibold">${item.restaurant_name}</td>
                     <td><span class="badge bg-secondary">${item.cuisine}</span></td>
                 `;

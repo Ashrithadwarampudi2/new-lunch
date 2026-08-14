@@ -87,7 +87,10 @@ async function query(text, params = []) {
 
 
   // Replace '?' placeholders with SQL Server parameter format (@p1, @p2, ...)
-  const transformedText = text.replace(/\?/g, () => `@p${++idx}`);
+ const transformedText = text.replace(
+  /\?/g,
+  () => `@p${++idx}`
+);
 
 
   console.log('DB QUERY:', {

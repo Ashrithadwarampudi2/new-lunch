@@ -9,11 +9,15 @@ const app = express();
 const PORT = process.env.PORT || 4000;
 
 
+
+
 // VAPID & WEB-PUSH CONFIGURATION
 const PUBLIC_VAPID_KEY = process.env.PUBLIC_VAPID_KEY ||
   "BLwCm04sZAn5P9Swr-9UBzTujwH8GBL-kLFD6nJNnzNqx1P4nMkA2UQ5ldl09XSUhXrHx021KMFjV0knlJwcdiM";
 const PRIVATE_VAPID_KEY = process.env.PRIVATE_VAPID_KEY ||
   "jX8L-ysZCffyZ8ajIMUO1HzPZo3Vb7N4u6TLfm533aY";
+
+
 
 
 webpush.setVapidDetails(
@@ -23,10 +27,14 @@ webpush.setVapidDetails(
 );
 
 
+
+
 // MIDDLEWARE CONFIGURATION
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(__dirname));
+
+
 
 
 // Database: using SQL Server via ./db.js (no local SQLite initialization)
@@ -38,10 +46,14 @@ function authenticateToken(req, res, next) {
 }
 
 
+
+
 function requireAdmin(req, res, next) {
   // Allow access during SSO migration. Admin-restrictions should be re-applied when SSO is integrated.
   next();
 }
+
+
 
 
 async function tableExists(tableName) {
@@ -58,12 +70,16 @@ async function tableExists(tableName) {
 }
 
 
+
+
 // 1. AUTHENTICATION ENDPOINTS
 // NOTE: /api/login removed while SSO integration is prepared.
 // Check Current User Authentication Status (returns a guest user while auth is disabled)
 app.get("/api/auth/me", authenticateToken, (req, res) => {
   res.json({ username: req.user.username, role: req.user.role });
 });
+
+
 
 
 // NOTE: Registration endpoint removed while auth is disabled.
@@ -74,6 +90,8 @@ app.post("/logout", (req, res) => {
   } catch (e) { }
   res.json({ message: "Logged out successfully" });
 });
+
+
 
 
 // Admin user inspection helper routes may still exist for migration diagnostics
@@ -91,42 +109,44 @@ app.get("/api/admin/users", async (req, res) => {
 });
 
 
+
+
 // 2. ADMIN USER ENDPOINTS
 // Get subscribers list (Admin view temporarily open)
-app.get("/api/admin/subscribers", (req, res) => {
-  (async () => {
-    try {
-      const result = await db.query('SELECT * FROM subscribers ORDER BY subscribedAt DESC');
-      res.json(result.recordset);
-    } catch (err) {
-      console.error('Could not fetch subscribers:', err);
-      res.status(500).json({ error: "Could not fetch subscribers." });
-    }
-  })();
+app.get("/api/admin/subscribers", async (req, res) => {
+  try {
+    const result = await db.query('SELECT * FROM subscribers ORDER BY subscribedAt DESC');
+    res.json(result.recordset);
+  } catch (err) {
+    console.error('Could not fetch subscribers:', err);
+    res.status(500).json({ error: "Could not fetch subscribers." });
+  }
 });
+
+
 
 
 // 3. SUBSCRIBER ENDPOINTS (TEXT ALERTS & PUSH)
 // Phone text alert subscription
-app.post("/api/subscribe", (req, res) => {
+app.post("/api/subscribe", async (req, res) => {
   const { phone } = req.body;
   if (!phone || phone.trim().length < 10) {
     return res.status(400).json({ error: "Please enter a valid phone number." });
   }
-  (async () => {
-    try {
-      await db.query('INSERT INTO subscribers (phone) VALUES (?)', [phone.trim()]);
-      res.status(201).json({ message: "Successfully signed up for text alerts!" });
-    } catch (err) {
-      console.error('Failed to enroll subscription:', err);
-      const msg = err && err.message ? err.message : '';
-      if (msg.includes('UNIQUE') || msg.includes('duplicate') || msg.includes('Violation')) {
-        return res.status(400).json({ error: "Phone number is already subscribed." });
-      }
-      return res.status(500).json({ error: "Failed to enroll subscription." });
+  try {
+    await db.query('INSERT INTO subscribers (phone) VALUES (?)', [phone.trim()]);
+    res.status(201).json({ message: "Successfully signed up for text alerts!" });
+  } catch (err) {
+    console.error('Failed to enroll subscription:', err);
+    const msg = err && err.message ? err.message : '';
+    if (msg.includes('UNIQUE') || msg.includes('duplicate') || msg.includes('Violation')) {
+      return res.status(400).json({ error: "Phone number is already subscribed." });
     }
-  })();
+    return res.status(500).json({ error: "Failed to enroll subscription." });
+  }
 });
+
+
 
 
 app.get("/api/subscribers", async (req, res) => {
@@ -143,6 +163,8 @@ app.get("/api/subscribers", async (req, res) => {
 });
 
 
+
+
 // Browser Web Push Subscription Endpoint (Called by home.html)
 app.post("/api/save-subscription", async (req, res) => {
   const subscription = req.body;
@@ -154,10 +176,16 @@ app.post("/api/save-subscription", async (req, res) => {
   }
   const { endpoint, keys } = subscription;
   try {
-    const update = await db.query('UPDATE dbo.push_subscriptions SET p256dh = ?, auth = ? WHERE endpoint = ?', [keys.p256dh, keys.auth, endpoint]);
+    const update = await db.query(
+      'UPDATE dbo.push_subscriptions SET p256dh = ?, auth = ? WHERE endpoint = ?',
+      [keys.p256dh, keys.auth, endpoint]
+    );
     const rowsAffected = update.rowsAffected && update.rowsAffected[0] ? update.rowsAffected[0] : 0;
     if (rowsAffected === 0) {
-      await db.query('INSERT INTO dbo.push_subscriptions (endpoint, p256dh, auth) VALUES (?, ?, ?)', [endpoint, keys.p256dh, keys.auth]);
+      await db.query(
+        'INSERT INTO dbo.push_subscriptions (endpoint, p256dh, auth) VALUES (?, ?, ?)',
+        [endpoint, keys.p256dh, keys.auth]
+      );
     }
     res.status(201).json({ success: true, message: "Push subscription saved successfully." });
   } catch (err) {
@@ -165,6 +193,8 @@ app.post("/api/save-subscription", async (req, res) => {
     return res.status(500).json({ error: "Failed to save push subscription." });
   }
 });
+
+
 
 
 // Dispatch Notifications Endpoint (Called by Admin Dashboard)
@@ -195,7 +225,6 @@ app.post("/api/send-notification", async (req, res) => {
         }
       };
       return webpush.sendNotification(pushSubscription, payload).catch(async (pushErr) => {
-        // If subscription has expired or is invalid (404/410), delete it from SQL Server
         if (pushErr && (pushErr.statusCode === 410 || pushErr.statusCode === 404)) {
           try {
             await db.query('DELETE FROM push_subscriptions WHERE endpoint = ?', [subRow.endpoint]);
@@ -216,30 +245,13 @@ app.post("/api/send-notification", async (req, res) => {
 });
 
 
+
+
 // Restaurants endpoint (SQL Server)
 app.get('/test', (req, res) => {
   res.send('test works');
 });
 console.log("Restaurants route loaded");
-
-
-app.post('/api/orders', async (req, res) => {
-  const { username = 'Anonymous', monday, tuesday, wednesday, thursday, bagels, bubbakoos, icecream } = req.body;
-  try {
-    await db.query(
-      'INSERT INTO dbo.lunch_orders (username, monday, tuesday, wednesday, thursday, bagels, Friday, icecream, submitted_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, GETDATE())',
-      [username, monday || null, tuesday || null, wednesday || null, thursday || null, bagels || null, bubbakoos || null, icecream || null]
-    );
-    res.status(201).json({ message: 'Order submitted successfully.' });
-  } catch (err) {
-    console.error('[weekly-menu] SQL Server error saving weekly menu:', err);
-
-    res.status(500).json({
-        error: err.message,
-        stack: err.stack
-    });
-}
-  });
 
 
 app.get('/api/orders', async (req, res) => {
@@ -253,7 +265,57 @@ app.get('/api/orders', async (req, res) => {
     console.error('[orders] SQL Server error fetching orders:', err);
     res.status(500).json({ error: 'Database error fetching orders.' });
   }
-  });
+});
+
+
+// ORDERS ENDPOINTS
+app.post('/api/orders', async (req, res) => {
+  const {
+    username = 'Anonymous',
+    monday,
+    tuesday,
+    wednesday,
+    thursday,
+    bagels,
+    bubbakoos,
+    icecream
+  } = req.body;
+
+
+  try {
+    await db.query(
+      'INSERT INTO dbo.lunch_orders (username, monday, tuesday, wednesday, thursday, bagels, Friday, icecream, submitted_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, GETDATE())',
+      [
+        username,
+        monday || null,
+        tuesday || null,
+        wednesday || null,
+        thursday || null,
+        bagels || null,
+        bubbakoos || null,
+        icecream || null
+      ]
+    );
+
+
+    res.status(201).json({
+      message: 'Order submitted successfully.'
+    });
+
+
+  } catch (err) {
+
+
+    console.error('[orders] SQL Server error saving order:', err);
+
+
+    res.status(500).json({
+      error: 'Database error submitting order.'
+    });
+
+
+  }
+});
 
 
 app.get('/api/sql-test', async (req, res) => {
@@ -275,6 +337,8 @@ app.get('/api/sql-test', async (req, res) => {
 });
 
 
+
+
 app.post('/api/contact-messages', async (req, res) => {
   const { name, email, message } = req.body;
   if (!name || !email || !message) {
@@ -291,6 +355,8 @@ app.post('/api/contact-messages', async (req, res) => {
     res.status(500).json({ error: 'Database error submitting contact message.' });
   }
 });
+
+
 
 
 app.put('/api/contact-messages/:id/responded', async (req, res) => {
@@ -310,7 +376,7 @@ app.put('/api/contact-messages/:id/responded', async (req, res) => {
   }
 });
 
-
+// WEEKLY MENU ENDPOINTS
 app.get('/api/weekly-menu', async (req, res) => {
   try {
     if (!await tableExists('weekly_menus')) {
@@ -324,8 +390,9 @@ app.get('/api/weekly-menu', async (req, res) => {
   }
 });
 
-
 app.post('/api/weekly-menu', async (req, res) => {
+  console.log('WEEKLY MENU ROUTE HIT');
+  console.log('REQUEST BODY:', req.body);
   const schedule = req.body && req.body.schedule;
   if (!Array.isArray(schedule)) {
     return res.status(400).json({ error: 'Schedule array is required.' });
@@ -334,38 +401,42 @@ app.post('/api/weekly-menu', async (req, res) => {
   const mondayDate = new Date(now);
   mondayDate.setDate(mondayDate.getDate() - ((mondayDate.getDay() + 6) % 7));
 
-
   try {
     if (!await tableExists('weekly_menus')) {
       return res.status(500).json({ error: 'weekly_menus table is not configured.' });
     }
-    for (const item of schedule) {
-      await db.query(
-        `INSERT INTO dbo.weekly_menus 
-          (week_start_date, day_of_week, meal_id, is_approved, restaurant_name, meal_type) 
-         VALUES (?, ?, ?, ?, ?, ?)`,
-        [
-          mondayDate,
-          item.day_of_week || 'Monday',
-          item.meal_id || 0,
-          1,
-          item.restaurant_name || '',
-          item.meal_type || ''
-        ]
-      );
-    }
+   for (const item of schedule) {
+
+    console.log('ITEM BEING INSERTED:', item);
+
+  await db.query(
+    `INSERT INTO dbo.weekly_menus
+      (week_start_date, day_of_week, meal_id, is_approved, restaurant_name, meal_type)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    [
+      mondayDate,
+      item.day_of_week,
+      item.meal_id,
+      1,
+      item.restaurant_name,
+      item.meal_type
+    ]
+  );
+}
     res.status(201).json({ message: 'Weekly menu saved successfully.' });
   } catch (err) {
-    console.error('[weekly-menu] SQL Server error saving weekly menu:', err);
-    res.status(500).json({
-      error: 'Database error saving weekly menu.',
-      details: err.message,
-      code: err.code
-    });
-  }
+  console.error('FULL WEEKLY MENU ERROR:', err);
+
+
+  return res.status(500).json({
+    error: err.message,
+    code: err.code,
+    stack: err.stack
+  });
+}
 });
 
-
+// RESTAURANTS ENDPOINTS
 app.get('/api/restaurants', async (req, res) => {
   const activeOnly = req.query.active === 'true';
   const query = activeOnly
@@ -388,21 +459,18 @@ app.get('/api/restaurants', async (req, res) => {
   }
 });
 
-
 // START SERVER
 app.get('/route-check', (req, res) => {
   res.json({ sqlTestExists: true });
 });
 console.log('ABOUT TO REGISTER SQL TEST ROUTE');
 console.log('SQL TEST ROUTE REGISTERED');
-
-
 console.log('SQL TEST ROUTE REGISTRATION COMPLETE');
+
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "home.html"));
 });
 console.log("TEST ROUTE LOADED");
-
 
 function logRegisteredRoutes() {
   if (typeof app === 'undefined' || !app?._router?.stack) {
@@ -435,8 +503,6 @@ function logRegisteredRoutes() {
   routes.forEach(r => console.log('REGISTERED ROUTE:', r));
 }
 logRegisteredRoutes();
-console.log("BOTTOM OF FILE REACHED");
-
 
 app.get('/test-direct-sql', async (req, res) => {
   try {
@@ -448,11 +514,9 @@ app.get('/test-direct-sql', async (req, res) => {
   }
 });
 
-
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Commvault Lunch Portal server running on port ${PORT}`);
 });
-
 
 process.on('exit', (code) => {
   console.log('NODE EXITED WITH CODE:', code);
@@ -464,7 +528,6 @@ process.on('unhandledRejection', (err) => {
   console.error('UNHANDLED REJECTION:', err);
 });
 
-
 app.get('/test-sql', async (req, res) => {
   try {
     const result = await db.query('SELECT TOP 5 * FROM restaurants');
@@ -475,7 +538,8 @@ app.get('/test-sql', async (req, res) => {
   }
 });
 
-
 setInterval(() => {
   console.log('Server heartbeat...');
 }, 30000);
+
+console.log("BOTTOM OF FILE REACHED");
